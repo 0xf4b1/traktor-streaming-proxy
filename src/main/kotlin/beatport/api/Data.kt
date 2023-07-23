@@ -2,6 +2,17 @@ package beatport.api
 
 import kotlinx.serialization.Serializable
 
+
+@Serializable
+data class Auth(val access_token: String,
+                val expires_in: Int,
+                val token_type: String,
+                val scope: String,
+                val refresh_token: String)
+
+@Serializable
+data class Account(val id: Int)
+
 @Serializable
 data class Genre(val id: Int, val name: String)
 

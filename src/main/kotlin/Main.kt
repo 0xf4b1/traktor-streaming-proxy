@@ -1,6 +1,4 @@
-import beatport.api.Download
-import beatport.api.Genre
-import beatport.api.Genres
+import beatport.api.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.response.*
@@ -12,6 +10,7 @@ import io.ktor.server.plugins.callloging.*
 import kotlinx.serialization.json.*
 import org.apache.log4j.BasicConfigurator
 import sources.Youtube
+import java.io.File
 
 fun main() {
     BasicConfigurator.configure()
@@ -26,6 +25,25 @@ fun main() {
         }
         var data = ByteArray(0)
         routing {
+
+            get("/v4/auth/o/authorize/") {
+                call.respondRedirect("traktor://bp_oauth?code=foo")
+            }
+
+            post("/v4/auth/o/token/") {
+                call.respond(Auth("foo", 36000, "Bearer", "app:locker user:dj", "bar"))
+            }
+
+            get("/v4/my/account/") {
+                call.respond(Account(1337)) // insert your account id
+            }
+
+            get("/v4/my/license/") {
+                call.respondBytes(
+                    File("license").inputStream().readBytes()
+                )
+            }
+
             get("/v4/catalog/search") {
                 call.respond(youtube.query(call.parameters["q"]!!))
             }
