@@ -35,7 +35,7 @@ fun main() {
             }
 
             get("/v4/my/account/") {
-                call.respond(Account(1337)) // insert your account id
+                call.respond(Account(System.getenv("BEATPORT_ACCOUNT_ID").toInt()))
             }
 
             get("/v4/my/license/") {
