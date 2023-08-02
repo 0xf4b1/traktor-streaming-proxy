@@ -9,10 +9,22 @@ Currently, it supports YouTube Music (via NewPipe) and allows searching for musi
 In theory other streaming services or self-hosted sources will be possible to integrate as long as they serve music files in mp4a audio format, since Traktor refuses to load other formats (even though these formats are supported for local files).
 As a workaround, an on-the-fly format conversion of the music files should be possible at some cost in quality and time.
 
-Please note that the server is currently not able to handle Beatport linking and authentication.
+As with Beatport streaming, Traktor does not allow to use the build-in recorder.
+
+Please note that the server is currently not fully able to handle Beatport linking and authentication.
 This means that you must use a valid account to enable Beatport streaming in Traktor and then redirect all API calls to this server.
 While it's possible to link a free account without a subscription, unfortunately it turned out that you need an active subscription, as upon authentication an encrypted license is loaded and verified, which includes some required options, and without it Trakor won't analyze tracks from the server and will only allow you to load one track at a time.
-As with Beatport streaming, Traktor does not allow to use the build-in recorder.
+
+However, if you dump your license file and place it in the app folder, the server is able to let Traktor link and authenticate as long as the license expiration date is not reached.
+It is possible to set the clock back on the device running Traktor to use an expired license file.
+
+## Docker
+
+Run the server in the Docker container with the following command:
+
+```
+docker run -p 443:443 -v <path-to-server.crt>:/app/cert/server.crt -v <path-to-server.key>:/app/cert/server.key -v <path-to-license>:/app/license -e BEATPORT_ACCOUNT_ID=<your-account-id> ghcr.io/0xf4b1/traktor-streaming-proxy:latest
+```
 
 ## Building
 
@@ -22,7 +34,8 @@ As with Beatport streaming, Traktor does not allow to use the build-in recorder.
 
 ## Setup
 
-1. You need to create a SSL certificate for the domain `api.beatport.com` and have it in the trust store of the device running Traktor.
+1. You need to create a SSL certificate for the domain `api.beatport.com`.
+You can use the script in `cert/gen-cert.sh` to generate a new CA and the server certificate. You have to import the CA certificate into the trust store of the device running Traktor.
 
 2. Install and configure nginx with SSL and a proxy_pass to this server.
 
