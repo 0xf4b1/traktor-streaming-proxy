@@ -1,4 +1,5 @@
 import beatport.api.*
+import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.response.*
@@ -32,6 +33,10 @@ fun main() {
 
             post("/v4/auth/o/token/") {
                 call.respond(Auth("foo", 36000, "Bearer", "app:locker user:dj", "bar"))
+            }
+
+            get("/v4/auth/logout/") {
+                call.respond(HttpStatusCode.OK)
             }
 
             get("/v4/my/account/") {
