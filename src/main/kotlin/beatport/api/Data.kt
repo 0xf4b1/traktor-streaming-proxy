@@ -28,10 +28,10 @@ data class Track(val id: String, val artists: List<Artist>, val name: String, va
 data class TrackResponse(val id: Long, val artists: List<Artist>, val name: String, val length_ms: Long)
 
 @Serializable
-data class GenreTrackResponse(val results: List<TrackResponse>)
+data class GenreTrackResponse(val results: List<TrackResponse>, val next: String)
 
 @Serializable
-data class QueryTrackResponse(val tracks: List<TrackResponse>)
+data class QueryTrackResponse(val tracks: List<TrackResponse>, val next: String)
 
 @Serializable
 data class Download(val location: String, val stream_quality: String, val length_ms: Int)
