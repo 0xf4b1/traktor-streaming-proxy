@@ -22,10 +22,10 @@ data class Genres(val results: List<Genre>)
 @Serializable
 data class Artist(val id: Int, val name: String)
 
-data class Track(val id: String, val artists: List<Artist>, val name: String)
+data class Track(val id: String, val artists: List<Artist>, val name: String, val length_ms: Long)
 
 @Serializable
-data class TrackResponse(val id: Long, val artists: List<Artist>, val name: String)
+data class TrackResponse(val id: Long, val artists: List<Artist>, val name: String, val length_ms: Long)
 
 @Serializable
 data class GenreTrackResponse(val results: List<TrackResponse>)
