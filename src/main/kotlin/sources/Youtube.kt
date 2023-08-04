@@ -61,7 +61,7 @@ class Youtube : ISource {
         val results = LinkedList<Track>()
         for (item in items) {
             if (item is StreamInfoItem) {
-                results.add(Track(item.url.substring(item.url.indexOf('=') + 1), listOf(Artist(1, item.uploaderName)), item.name))
+                results.add(Track(item.url.substring(item.url.indexOf('=') + 1), listOf(Artist(1, item.uploaderName)), item.name, item.duration * 1000))
             }
         }
         return results
