@@ -8,6 +8,7 @@ import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
 import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
 import org.schabi.newpipe.extractor.localization.Localization
+import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.MUSIC_SONGS
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.net.URL
 import java.util.*
@@ -29,7 +30,7 @@ class Youtube : ISource {
     }
 
     override fun query(query: String): List<Track> {
-        val extractor = ServiceList.YouTube.getSearchExtractor(query)
+        val extractor = ServiceList.YouTube.getSearchExtractor(query, listOf(MUSIC_SONGS), "")
         val itemsPage = if (next.containsKey(query) && next[query] != null) {
             extractor.getPage(next[query])
         } else {
