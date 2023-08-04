@@ -1,8 +1,6 @@
 package sources
 
 import beatport.api.*
-import beatport.api.Utils.decode
-import beatport.api.Utils.encode
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
 import org.schabi.newpipe.extractor.*
@@ -15,33 +13,22 @@ import java.net.URL
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-class Youtube {
+class Youtube : ISource {
 
     private val next = HashMap<String, Page?>()
-    private val mapping = HashMap<Long, String>()
+
+    override val name: String
+        get() = "YouTube"
 
     init {
         NewPipe.init(Downloader(), Localization.DEFAULT)
     }
 
-    fun download(id: Long): ByteArray {
-        val code = decode(id) + mapping[id]
-        return downloadTrack(getAudioStream(code))
+    override fun getGenre(): List<Track> {
+        return getTrending()
     }
 
-    private fun downloadTrack(path: String): ByteArray {
-        val con = URL(path).openConnection()
-        con.setRequestProperty("range", "bytes=0-")
-        return con.inputStream.readBytes()
-    }
-
-    fun getTrending(): TrackResponse {
-        val extractor = ServiceList.YouTube.kioskList.getExtractorById("Trending", null)
-        extractor.fetchPage()
-        return TrackResponse(extractItems(extractor.initialPage.items))
-    }
-
-    fun query(query: String): Tracks {
+    override fun query(query: String): List<Track> {
         val extractor = ServiceList.YouTube.getSearchExtractor(query)
         val itemsPage = if (next.containsKey(query) && next[query] != null) {
             extractor.getPage(next[query])
@@ -50,19 +37,30 @@ class Youtube {
             extractor.initialPage
         }
         next[query] = itemsPage.nextPage
-        return Tracks(extractItems(itemsPage.items))
+        return extractItems(itemsPage.items)
+    }
+
+    override fun download(id: String): ByteArray {
+        return downloadTrack(getAudioStream(id))
+    }
+
+    private fun downloadTrack(path: String): ByteArray {
+        val con = URL(path).openConnection()
+        con.setRequestProperty("range", "bytes=0-")
+        return con.inputStream.readBytes()
+    }
+
+    private fun getTrending(): List<Track> {
+        val extractor = ServiceList.YouTube.kioskList.getExtractorById("Trending", null)
+        extractor.fetchPage()
+        return extractItems(extractor.initialPage.items)
     }
 
     private fun extractItems(items: List<InfoItem>): List<Track> {
         val results = LinkedList<Track>()
         for (item in items) {
             if (item is StreamInfoItem) {
-                val code = item.url.substring(item.url.indexOf('=') + 1)
-                val id = encode(code.substring(0, 10))
-                if (!mapping.containsKey(id)) {
-                    mapping[id] = code.substring(10)
-                }
-                results.add(Track(id, listOf(Artist(1, item.uploaderName)), item.name))
+                results.add(Track(item.url.substring(item.url.indexOf('=') + 1), listOf(Artist(1, item.uploaderName)), item.name))
             }
         }
         return results

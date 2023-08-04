@@ -10,12 +10,34 @@ import io.ktor.server.netty.*
 import io.ktor.server.plugins.callloging.*
 import kotlinx.serialization.json.*
 import org.apache.log4j.BasicConfigurator
+import sources.ISource
 import sources.Youtube
 import java.io.File
 
+val sources: ArrayList<ISource> = ArrayList()
+val trackIdToSource: HashMap<String, Int> = HashMap()
+val traktorIdToTrackId: HashMap<Long, String> = HashMap()
+
+fun register(source: ISource) {
+    sources.add(source)
+}
+
+fun processTracks(id: Int, tracks: List<Track>): List<TrackResponse> {
+    return tracks.map { track ->
+        trackIdToSource[track.id] = id
+        val traktorId = Utils.encode(track.id.substring(0, 10))
+        if (!traktorIdToTrackId.containsKey(traktorId)) {
+            traktorIdToTrackId[traktorId] = track.id.substring(10)
+        }
+        TrackResponse(traktorId, track.artists, track.name)
+    }
+}
+
 fun main() {
     BasicConfigurator.configure()
-    val youtube = Youtube()
+
+    register(Youtube())
+
     embeddedServer(Netty, port = 8000) {
         install(CallLogging)
         install(ContentNegotiation) {
@@ -50,7 +72,9 @@ fun main() {
             }
 
             get("/v4/catalog/search") {
-                call.respond(youtube.query(call.parameters["q"]!!))
+                call.parameters["q"]?.let {
+                    call.respond(QueryTrackResponse(sources.mapIndexed { id, source -> processTracks(id, source.query(it)) }.flatten()))
+                }
             }
 
             get("/v4/catalog/genres") {
@@ -58,18 +82,24 @@ fun main() {
             }
 
             get("/v4/catalog/genres/") {
-                call.respond(Genres(listOf(Genre(1, "YouTube"))))
+                call.respond(Genres(sources.mapIndexed { id, source -> Genre(id, source.name) }))
             }
 
             get("/v4/catalog/genres/{id}/tracks/") {
-                call.respond(youtube.getTrending())
+                call.parameters["id"]?.let {
+                    call.respond(GenreTrackResponse(processTracks(it.toInt(), sources[it.toInt()].getGenre())))
+                }
             }
 
             get("/v4/catalog/tracks/{id}/download/") {
-                data = youtube.download(call.parameters["id"]!!.toLong())
-                call.respond(Download("https://api.beatport.com/output.mp4", "foo", 1337))
+                call.parameters["id"]?.let {
+                    val trackId = Utils.decode(it.toLong()) + traktorIdToTrackId[it.toLong()]!!
+                    data = sources[trackIdToSource[trackId]!!].download(trackId)
+                    call.respond(Download("https://api.beatport.com/output.mp4", "foo", 1337))
+                }
             }
 
+            // Serve the last downloaded track
             head("/output.mp4") {
                 call.response.header("content-type", "video/mp4")
                 call.respondBytes(data)
