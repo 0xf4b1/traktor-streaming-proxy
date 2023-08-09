@@ -1,18 +1,14 @@
 package sources
 
 import beatport.api.*
-import okhttp3.OkHttpClient
-import okhttp3.RequestBody
 import org.schabi.newpipe.extractor.*
 import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
-import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
 import org.schabi.newpipe.extractor.localization.Localization
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.MUSIC_SONGS
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.net.URL
 import java.util.*
-import java.util.concurrent.TimeUnit
 
 class Youtube : ISource {
 
@@ -76,53 +72,20 @@ class Youtube : ISource {
     class Downloader : org.schabi.newpipe.extractor.downloader.Downloader() {
 
         private val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101 Firefox/68.0"
-        private val client: OkHttpClient = OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).build()
 
         override fun execute(request: Request): Response {
-            val httpMethod = request.httpMethod()
-            val url = request.url()
-            val headers = request.headers()
-            val dataToSend = request.dataToSend()
+            val headers = HashMap<String, String>()
+            headers["User-Agent"] = USER_AGENT
+            request.headers().forEach { (k, v) -> headers[k] = v[0]}
 
-            var requestBody: RequestBody? = null
-            if (dataToSend != null) {
-                requestBody = RequestBody.create(null, dataToSend)
-            }
+            val con = WebRequests.createConnection(request.url(), request.httpMethod(), headers)
 
-            val requestBuilder = okhttp3.Request.Builder()
-                .method(httpMethod, requestBody).url(url)
-                .addHeader("User-Agent", USER_AGENT)
+            if (request.httpMethod() == "POST")
+                WebRequests.post(con, request.dataToSend() as ByteArray)
 
-            for ((headerName, headerValueList) in headers) {
-                if (headerValueList.size > 1) {
-                    requestBuilder.removeHeader(headerName)
-                    for (headerValue in headerValueList) {
-                        requestBuilder.addHeader(headerName, headerValue)
-                    }
-                } else if (headerValueList.size == 1) {
-                    requestBuilder.header(headerName, headerValueList[0])
-                }
-            }
+            val res = WebRequests.request(con)
 
-            val response = client.newCall(requestBuilder.build()).execute()
-
-            if (response.code == 429) {
-                response.close()
-                throw ReCaptchaException("reCaptcha Challenge requested", url)
-            }
-
-            val body = response.body
-            var responseBodyToReturn: String? = null
-
-            if (body != null) {
-                responseBodyToReturn = body.string()
-            }
-
-            val latestUrl = response.request.url.toString()
-            return Response(
-                response.code,
-                response.message, response.headers.toMultimap(), responseBodyToReturn, latestUrl
-            )
+            return Response(res.status, "", con.headerFields, res.value, request.url())
         }
     }
 }
