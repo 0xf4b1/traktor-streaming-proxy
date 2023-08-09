@@ -11,6 +11,7 @@ import io.ktor.server.plugins.callloging.*
 import kotlinx.serialization.json.*
 import org.apache.log4j.BasicConfigurator
 import sources.ISource
+import sources.Spotify
 import sources.Youtube
 import java.io.File
 
@@ -37,6 +38,7 @@ fun main() {
     BasicConfigurator.configure()
 
     register(Youtube())
+    register(Spotify())
 
     embeddedServer(Netty, port = 8000) {
         install(CallLogging)
