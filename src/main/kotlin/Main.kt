@@ -83,12 +83,27 @@ fun main() {
             }
 
             get("/v4/catalog/genres/") {
-                call.respond(Genres(sources.mapIndexed { id, source -> Genre(id, source.name) }))
+                call.respond(Genres(sources.mapIndexed { id, source -> Genre(id + 1, source.name) }))
             }
 
             get("/v4/catalog/genres/{id}/tracks/") {
                 call.parameters["id"]?.let {
-                    call.respond(GenreTrackResponse(processTracks(it.toInt(), sources[it.toInt()].getGenre()), ""))
+                    call.respond(GenreTrackResponse(processTracks(it.toInt() - 1, sources[it.toInt() - 1].getGenre()), ""))
+                }
+            }
+
+            get("/v4/curation/playlists/") {
+                call.parameters["genre_id"]?.let {
+                    call.respond(CuratedPlaylistsResponse(sources[it.toInt() - 1].getPlaylists().mapIndexed { id, name ->
+                        Playlist((it + id).toLong(), name) }, ""))
+                }
+            }
+
+            get("/v4/curation/playlists/{id}/tracks/") {
+                call.parameters["id"]?.let {
+                    val sourceId = it.substring(0,1).toInt() - 1
+                    val results = processTracks(sourceId, sources[sourceId].getPlaylist(it.substring(1).toInt()))
+                    call.respond(CuratedPlaylistResponse(results.map { track -> PlaylistItem(track) }, ""))
                 }
             }
 

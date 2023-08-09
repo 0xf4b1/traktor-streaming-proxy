@@ -34,4 +34,16 @@ data class GenreTrackResponse(val results: List<TrackResponse>, val next: String
 data class QueryTrackResponse(val tracks: List<TrackResponse>, val next: String)
 
 @Serializable
+data class Playlist(val id: Long, val name: String)
+
+@Serializable
+data class CuratedPlaylistsResponse(val results: List<Playlist>, val next: String)
+
+@Serializable
+data class PlaylistItem(val track: TrackResponse)
+
+@Serializable
+data class CuratedPlaylistResponse(val results: List<PlaylistItem>, val next: String)
+
+@Serializable
 data class Download(val location: String, val stream_quality: String, val length_ms: Int)
