@@ -27,7 +27,6 @@ dependencies {
     implementation("org.slf4j:slf4j-log4j12:2.0.6")
 
     implementation("com.github.TeamNewPipe.NewPipeExtractor:extractor:v0.22.2")
-    implementation("com.squareup.okhttp3:okhttp:4.10.0")
 
     testImplementation(kotlin("test"))
     implementation(kotlin("stdlib-jdk8"))
