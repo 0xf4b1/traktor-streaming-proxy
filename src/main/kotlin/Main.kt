@@ -73,8 +73,8 @@ fun main() {
 
             get("/v4/catalog/search") {
                 call.parameters["q"]?.let {
-                    val results = sources.mapIndexed { id, source -> processTracks(id, source.query(it)) }.flatten()
-                    call.respond(QueryTrackResponse(results, if (results.isNotEmpty()) "api.beatport.com/v4/catalog/search?q=$it" else ""))
+                    val results = sources.mapIndexed { id, source -> processTracks(id, source.query(it, !call.parameters.contains("more"))) }.flatten()
+                    call.respond(QueryTrackResponse(results, if (results.isNotEmpty()) "api.beatport.com/v4/catalog/search?q=$it&more" else ""))
                 }
             }
 
