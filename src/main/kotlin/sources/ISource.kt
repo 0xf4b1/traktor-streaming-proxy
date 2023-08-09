@@ -14,6 +14,16 @@ interface ISource {
     fun getGenre(): List<Track>
 
     /**
+     * Playlist names showing in Traktor when navigating to Curated Playlists-><source name>
+     */
+    fun getPlaylists(): List<String>
+
+    /**
+     * Contents showing in Traktor when navigating to Curated Playlists-><source name>-><playlist name>
+     */
+    fun getPlaylist(id: Int): List<Track>
+
+    /**
      * Called when using search within Traktor
      */
     fun query(query: String, reset: Boolean): List<Track>

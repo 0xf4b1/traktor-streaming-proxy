@@ -25,6 +25,14 @@ class Youtube : ISource {
         return getTrending()
     }
 
+    override fun getPlaylists(): List<String> {
+        return emptyList()
+    }
+
+    override fun getPlaylist(id: Int): List<Track> {
+        return emptyList()
+    }
+
     override fun query(query: String, reset: Boolean): List<Track> {
         val extractor = ServiceList.YouTube.getSearchExtractor(query, listOf(MUSIC_SONGS), "")
         val itemsPage = if (!reset && next.containsKey(query)) {
