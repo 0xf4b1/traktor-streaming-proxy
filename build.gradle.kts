@@ -28,6 +28,9 @@ dependencies {
 
     implementation("com.github.TeamNewPipe.NewPipeExtractor:extractor:v0.22.2")
 
+    implementation("xyz.gianlu.librespot:librespot-lib:1.6.3")
+    implementation("org.json:json:20230227")
+
     testImplementation(kotlin("test"))
     implementation(kotlin("stdlib-jdk8"))
 }
