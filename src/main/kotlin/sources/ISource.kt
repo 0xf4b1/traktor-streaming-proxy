@@ -16,7 +16,7 @@ interface ISource {
     /**
      * Called when using search within Traktor
      */
-    fun query(query: String): List<Track>
+    fun query(query: String, reset: Boolean): List<Track>
 
     /**
      * Download music track data (must be in mp4 format)
