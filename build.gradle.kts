@@ -31,8 +31,20 @@ dependencies {
     implementation("xyz.gianlu.librespot:librespot-lib:1.6.3")
     implementation("org.json:json:20230227")
 
+    implementation("com.tiefensuche:tidal-kt:0.1-SNAPSHOT")
+
     testImplementation(kotlin("test"))
     implementation(kotlin("stdlib-jdk8"))
+}
+
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/0xf4b1/tidal-kt")
+        credentials {
+            username = System.getenv("GITHUB_ACTOR")
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
 }
 
 tasks.test {
