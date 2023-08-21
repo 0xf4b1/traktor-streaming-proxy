@@ -12,8 +12,10 @@ import kotlinx.serialization.json.*
 import org.apache.log4j.BasicConfigurator
 import sources.ISource
 import sources.Spotify
+import sources.Tidal
 import sources.Youtube
 import java.io.File
+import kotlin.math.min
 
 val sources: ArrayList<ISource> = ArrayList()
 val trackIdToSource: HashMap<String, Int> = HashMap()
@@ -26,9 +28,9 @@ fun register(source: ISource) {
 fun processTracks(id: Int, tracks: List<Track>): List<TrackResponse> {
     return tracks.map { track ->
         trackIdToSource[track.id] = id
-        val traktorId = Utils.encode(track.id.substring(0, 10))
+        val traktorId = Utils.encode(track.id.substring(0, min(track.id.length, 10)))
         if (!traktorIdToTrackId.containsKey(traktorId)) {
-            traktorIdToTrackId[traktorId] = track.id.substring(10)
+            traktorIdToTrackId[traktorId] = if (track.id.length > 10) track.id.substring(10) else ""
         }
         TrackResponse(traktorId, track.artists, track.name, track.length_ms, track.release)
     }
@@ -39,6 +41,7 @@ fun main() {
 
     register(Youtube())
     register(Spotify())
+    register(Tidal())
 
     embeddedServer(Netty, port = 8000) {
         install(CallLogging)
