@@ -23,7 +23,7 @@ class Tidal : ISource {
             auth()
     }
 
-    private var artists: List<com.tiefensuche.tidal.api.Artist>? = null
+    private var artists = ArrayList<com.tiefensuche.tidal.api.Artist>()
 
     override val name: String
         get() = "Tidal"
@@ -33,13 +33,13 @@ class Tidal : ISource {
     }
 
     override fun getPlaylists(): List<String> {
-        if (artists == null)
-            artists = api.getArtists(false)
-        return artists!!.map { it.name }
+        val current = api.getArtists(false)
+        artists.addAll(current)
+        return current.map { it.name }
     }
 
     override fun getPlaylist(id: Int): List<Track> {
-        return api.getArtist(artists!![id].id, false)
+        return api.getArtist(artists[id].id, false)
             .map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
     }
 
