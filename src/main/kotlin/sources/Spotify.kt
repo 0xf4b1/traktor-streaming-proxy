@@ -1,5 +1,6 @@
 package sources
 
+import Config.prop
 import beatport.api.*
 import com.spotify.connectstate.Connect
 import org.json.JSONArray
@@ -54,11 +55,11 @@ class Spotify : ISource {
     }
 
     private fun createSession() {
-        val username = System.getenv("SPOTIFY_USERNAME")
-        val password = System.getenv("SPOTIFY_PASSWORD")
-        if (username.isEmpty() || password.isEmpty()) {
+        if (!prop.containsKey("spotify.username") || !prop.containsKey("spotify.password")) {
             throw Exception("Username and/or password missing!")
         }
+        val username = prop.getProperty("spotify.username")
+        val password = prop.getProperty("spotify.password")
         val conf = Session.Configuration.Builder()
             .setStoreCredentials(false)
             .setCacheEnabled(true)
