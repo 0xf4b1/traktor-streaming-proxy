@@ -99,16 +99,16 @@ fun main() {
 
             get("/v4/curation/playlists/") {
                 call.parameters["genre_id"]?.let {
-                    val results = sources[it.toInt() - 1].getPlaylists().mapIndexed { id, name ->
+                    val results = sources[it.toInt() - 1].getPlaylists(!call.parameters.contains("more")).mapIndexed { id, name ->
                         Playlist((it + id).toLong(), name) }
-                    call.respond(CuratedPlaylistsResponse(results, if (results.isNotEmpty()) "api.beatport.com/v4/curation/playlists/?genre_id=$it" else ""))
+                    call.respond(CuratedPlaylistsResponse(results, if (results.isNotEmpty()) "api.beatport.com/v4/curation/playlists/?genre_id=$it&more" else ""))
                 }
             }
 
             get("/v4/curation/playlists/{id}/tracks/") {
                 call.parameters["id"]?.let {
                     val sourceId = it.substring(0,1).toInt() - 1
-                    val results = processTracks(sourceId, sources[sourceId].getPlaylist(it.substring(1).toInt()))
+                    val results = processTracks(sourceId, sources[sourceId].getPlaylist(it.substring(1).toInt(), false))
                     call.respond(CuratedPlaylistResponse(results.map { track -> PlaylistItem(track) }, ""))
                 }
             }
