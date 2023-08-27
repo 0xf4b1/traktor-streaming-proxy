@@ -1,3 +1,4 @@
+import Config.prop
 import beatport.api.*
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -15,11 +16,33 @@ import sources.Spotify
 import sources.Tidal
 import sources.Youtube
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.math.min
 
 val sources: ArrayList<ISource> = ArrayList()
 val trackIdToSource: HashMap<String, Int> = HashMap()
 val traktorIdToTrackId: HashMap<Long, String> = HashMap()
+
+object Config {
+    val prop = Properties()
+
+    fun readConfig() {
+        val file = File("config.properties")
+        if (!file.exists())
+            return
+        FileInputStream(file).use { prop.load(it) }
+    }
+
+    fun saveConfig() {
+        val file = File("config.properties")
+        FileOutputStream(file).use {
+            prop.store(it, "")
+        }
+    }
+}
 
 fun register(source: ISource) {
     sources.add(source)
@@ -38,6 +61,13 @@ fun processTracks(id: Int, tracks: List<Track>): List<TrackResponse> {
 
 fun main() {
     BasicConfigurator.configure()
+
+    Config.readConfig()
+    Runtime.getRuntime().addShutdownHook(object : Thread() {
+        override fun run() {
+            Config.saveConfig()
+        }
+    })
 
     register(Youtube())
     register(Spotify())
@@ -67,7 +97,7 @@ fun main() {
             }
 
             get("/v4/my/account/") {
-                call.respond(Account(System.getenv("BEATPORT_ACCOUNT_ID").toInt()))
+                call.respond(Account(prop.getProperty("beatport.accountId").toInt()))
             }
 
             get("/v4/my/license/") {

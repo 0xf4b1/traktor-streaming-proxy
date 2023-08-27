@@ -1,11 +1,9 @@
 package sources
 
+import Config.prop
 import beatport.api.Artist
 import beatport.api.Track
 import com.tiefensuche.tidal.api.TidalApi
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.net.URL
 import java.util.*
 
@@ -13,7 +11,7 @@ class Tidal : ISource {
 
     private val api = TidalApi(
         TidalApi.Session(
-            "YOUR-CLIENT-ID",
+            prop.getProperty("tidal.clientId"),
             ::callback
         )
     )
@@ -54,11 +52,6 @@ class Tidal : ISource {
     }
 
     private fun readConfig(): Boolean {
-        val file = File("config.properties")
-        if (!file.exists())
-            return false
-        val prop = Properties()
-        FileInputStream(file).use { prop.load(it) }
         if (!prop.containsKey("tidal.userId") || !prop.containsKey("tidal.countryCode") ||
             !prop.containsKey("tidal.accessToken") || !prop.containsKey("tidal.refreshToken")
         )
@@ -83,14 +76,9 @@ class Tidal : ISource {
     }
 
     private fun callback(session: TidalApi.Session) {
-        val file = File("config.properties")
-        val prop = Properties()
-        FileOutputStream(file).use {
-            prop.setProperty("tidal.userId", session.userId.toString())
-            prop.setProperty("tidal.countryCode", session.countryCode)
-            prop.setProperty("tidal.accessToken", session.accessToken)
-            prop.setProperty("tidal.refreshToken", session.refreshToken)
-            prop.store(it, "")
-        }
+        prop.setProperty("tidal.userId", session.userId.toString())
+        prop.setProperty("tidal.countryCode", session.countryCode)
+        prop.setProperty("tidal.accessToken", session.accessToken)
+        prop.setProperty("tidal.refreshToken", session.refreshToken)
     }
 }
