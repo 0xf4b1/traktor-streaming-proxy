@@ -29,11 +29,13 @@ class Spotify : ISource {
         return getReleaseRadar(false)
     }
 
-    override fun getPlaylists(): List<String> {
-        return listOf("Release Radar", "Saved Tracks")
+    override fun getPlaylists(reset: Boolean): List<String> {
+        if (reset)
+            return listOf("Release Radar", "Saved Tracks")
+        return emptyList()
     }
 
-    override fun getPlaylist(id: Int): List<Track> {
+    override fun getPlaylist(id: Int, reset: Boolean): List<Track> {
         when (id) {
             0 -> return getReleaseRadar(false)
             1 -> return getUsersSavedTracks(false)
