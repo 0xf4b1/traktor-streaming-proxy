@@ -2,6 +2,7 @@ package sources
 
 import Config.prop
 import beatport.api.Artist
+import beatport.api.Playlist
 import beatport.api.Track
 import com.tiefensuche.tidal.api.TidalApi
 import java.net.URL
@@ -30,10 +31,10 @@ class Tidal : ISource {
         return api.getTracks(false).map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
     }
 
-    override fun getPlaylists(reset: Boolean): List<String> {
+    override fun getPlaylists(reset: Boolean): List<Playlist> {
         val current = api.getArtists(false)
         artists.addAll(current)
-        return current.map { it.name }
+        return current.mapIndexed { id, artist -> Playlist(artists.size - current.size + id.toLong(), artist.name) }
     }
 
     override fun getPlaylist(id: Int, reset: Boolean): List<Track> {
