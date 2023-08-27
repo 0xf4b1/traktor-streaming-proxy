@@ -1,5 +1,6 @@
 package sources
 
+import beatport.api.Playlist
 import beatport.api.Track
 
 interface ISource {
@@ -16,7 +17,7 @@ interface ISource {
     /**
      * Playlist names showing in Traktor when navigating to Curated Playlists-><source name>
      */
-    fun getPlaylists(reset: Boolean): List<String>
+    fun getPlaylists(reset: Boolean): List<Playlist>
 
     /**
      * Contents showing in Traktor when navigating to Curated Playlists-><source name>-><playlist name>

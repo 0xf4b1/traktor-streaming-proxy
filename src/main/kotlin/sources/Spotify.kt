@@ -30,9 +30,9 @@ class Spotify : ISource {
         return getReleaseRadar(false)
     }
 
-    override fun getPlaylists(reset: Boolean): List<String> {
+    override fun getPlaylists(reset: Boolean): List<Playlist> {
         if (reset)
-            return listOf("Release Radar", "Saved Tracks")
+            return listOf(Playlist(0, "Release Radar"), Playlist(1, "Saved Tracks"))
         return emptyList()
     }
 

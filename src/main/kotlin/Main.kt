@@ -129,8 +129,8 @@ fun main() {
 
             get("/v4/curation/playlists/") {
                 call.parameters["genre_id"]?.let {
-                    val results = sources[it.toInt() - 1].getPlaylists(!call.parameters.contains("more")).mapIndexed { id, name ->
-                        Playlist((it + id).toLong(), name) }
+                    val results = sources[it.toInt() - 1].getPlaylists(!call.parameters.contains("more")).map { playlist ->
+                        Playlist((it + playlist.id).toLong(), playlist.name) }
                     call.respond(CuratedPlaylistsResponse(results, if (results.isNotEmpty()) "api.beatport.com/v4/curation/playlists/?genre_id=$it&more" else ""))
                 }
             }
