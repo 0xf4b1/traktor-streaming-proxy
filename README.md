@@ -5,7 +5,7 @@ Traktor DJ supports streaming of music tracks, but only from the Beatport and Be
 This project aims to integrate other streaming sources into Traktor DJ via Beatport Streaming.
 It consists of an API server based on ktor which fakes some relevant parts of the Beatport API to serve custom content.
 
-Currently, it supports YouTube Music (via NewPipe) and allows searching for music and listing trending content.
+Currently, it supports YouTube Music (via NewPipe), Spotify, and Tidal with support for searching for music and browsing saved tracks and playlists.
 In theory other streaming services or self-hosted sources will be possible to integrate as long as they serve music files in mp4a audio format, since Traktor refuses to load other formats (even though these formats are supported for local files).
 As a workaround, an on-the-fly format conversion of the music files should be possible at some cost in quality and time.
 
@@ -23,7 +23,7 @@ It is possible to set the clock back on the device running Traktor to use an exp
 Run the server in the Docker container with the following command:
 
 ```
-docker run -p 443:443 -v <path-to-server.crt>:/app/cert/server.crt -v <path-to-server.key>:/app/cert/server.key -v <path-to-license>:/app/license -e BEATPORT_ACCOUNT_ID=<your-account-id> ghcr.io/0xf4b1/traktor-streaming-proxy:latest
+docker run -p 443:443 -v <path-to-server.crt>:/app/cert/server.crt -v <path-to-server.key>:/app/cert/server.key -v <path-to-config.properties>:/app/config.properties -v <path-to-license>:/app/license ghcr.io/0xf4b1/traktor-streaming-proxy:latest
 ```
 
 ## Building
@@ -86,4 +86,4 @@ If you get SSL certificate errors, you need to fix the configuration.
 
 4. Then redirect `api.beatport.com` to the server by uncommenting the line in `/private/etc/hosts` again.
 
-5. You should be able to use Beatport search to find content from YouTube Music. If you navigate to Genres->YouTube, you should see trending content.
+5. If you navigate to Beatport Streaming, you should be able to browse through the playlists from the sources and use the search box to find content.
