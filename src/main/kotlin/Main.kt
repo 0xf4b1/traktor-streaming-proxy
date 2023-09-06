@@ -44,8 +44,12 @@ object Config {
     }
 }
 
-fun register(source: ISource) {
-    sources.add(source)
+fun register(source: Class<out ISource>) {
+    try {
+        sources.add(source.getConstructor().newInstance())
+    } catch (ex: Exception) {
+        println("Can not instantiate $source: ${ex.printStackTrace()}")
+    }
 }
 
 fun processTracks(id: Int, tracks: List<Track>): List<TrackResponse> {
@@ -69,9 +73,9 @@ fun main() {
         }
     })
 
-    register(Youtube())
-    register(Spotify())
-    register(Tidal())
+    register(Youtube::class.java)
+    register(Spotify::class.java)
+    register(Tidal::class.java)
 
     embeddedServer(Netty, port = 8000) {
         install(CallLogging)
