@@ -31,7 +31,7 @@ dependencies {
     implementation("xyz.gianlu.librespot:librespot-lib:1.6.3")
     implementation("org.json:json:20230227")
 
-    implementation("com.tiefensuche:tidal-kt:0.1.1")
+    implementation("com.tiefensuche:tidal-kt:0.2.0")
 
     testImplementation(kotlin("test"))
     implementation(kotlin("stdlib-jdk8"))
