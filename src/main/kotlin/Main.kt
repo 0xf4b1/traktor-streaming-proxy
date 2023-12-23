@@ -26,6 +26,11 @@ val sources: ArrayList<ISource> = ArrayList()
 val trackIdToSource: HashMap<String, Int> = HashMap()
 val traktorIdToTrackId: HashMap<Long, String> = HashMap()
 
+val allSources = mapOf(
+    "youtube" to Youtube::class.java,
+    "spotify" to Spotify::class.java,
+    "tidal" to Tidal::class.java)
+
 object Config {
     val prop = Properties()
 
@@ -73,9 +78,10 @@ fun main() {
         }
     })
 
-    register(Youtube::class.java)
-    register(Spotify::class.java)
-    register(Tidal::class.java)
+    prop.getProperty("sources.enabled", "").split(",").map { name -> allSources[name] }.forEach {
+        if (it != null)
+            register(it)
+    }
 
     embeddedServer(Netty, port = 8000) {
         install(CallLogging)
