@@ -25,11 +25,23 @@ class Youtube : ISource {
         return getTrending()
     }
 
-    override fun getPlaylists(reset: Boolean): List<Playlist> {
+    override fun getCuratedPlaylists(reset: Boolean): List<Playlist> {
         return emptyList()
     }
 
-    override fun getPlaylist(id: Int, reset: Boolean): List<Track> {
+    override fun getCuratedPlaylist(id: String, reset: Boolean): List<Track> {
+        return emptyList()
+    }
+
+    override fun getPlaylists(): List<Playlist> {
+        return emptyList()
+    }
+
+    override fun getPlaylist(id: String): List<Track> {
+        return emptyList()
+    }
+
+    override fun getTop100(): List<Track> {
         return emptyList()
     }
 
