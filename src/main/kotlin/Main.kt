@@ -118,10 +118,17 @@ fun main() {
 
             get("/v4/catalog/search") {
                 call.parameters["q"]?.let {
-                    val enabled = prop.getProperty("search.enabled", "").split(",").map { name -> allSources[name] }
+                    var query = it
+                    val enabled = if (it.contains(":")) {
+                        val split = it.split(":")
+                        query = split[1]
+                        listOf(allSources[split[0]])
+                    } else {
+                        prop.getProperty("search.enabled", "").split(",").map { name -> allSources[name] }
+                    }
                     val results = sources.mapIndexed { id, source ->
                         if (enabled.contains(null) || source::class.java in enabled)
-                            processTracks(id, source.query(it, !call.parameters.contains("more")))
+                            processTracks(id, source.query(query, !call.parameters.contains("more")))
                         else
                             emptyList()
                     }.flatten()
