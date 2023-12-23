@@ -17,12 +17,27 @@ interface ISource {
     /**
      * Playlist names showing in Traktor when navigating to Curated Playlists-><source name>
      */
-    fun getPlaylists(reset: Boolean): List<Playlist>
+    fun getCuratedPlaylists(reset: Boolean): List<Playlist>
 
     /**
      * Contents showing in Traktor when navigating to Curated Playlists-><source name>-><playlist name>
      */
-    fun getPlaylist(id: Int, reset: Boolean): List<Track>
+    fun getCuratedPlaylist(id: String, reset: Boolean): List<Track>
+
+    /**
+     * Playlist names showing in Traktor when navigating to Playlists
+     */
+    fun getPlaylists(): List<Playlist>
+
+    /**
+     * Contents showing in Traktor when navigating to Playlists-><playlist name>
+     */
+    fun getPlaylist(id: String): List<Track>
+
+    /**
+     * Contents showing in Traktor when navigating to Top 100-><source name>
+     */
+    fun getTop100(): List<Track>
 
     /**
      * Called when using search within Traktor
