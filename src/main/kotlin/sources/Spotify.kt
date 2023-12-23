@@ -18,6 +18,7 @@ class Spotify : ISource {
 
     private var session: Session? = null
     private val nextQueryUrls: HashMap<String, String> = HashMap()
+    private val playlists = mutableListOf<String>()
 
     override val name: String
         get() = "Spotify"
@@ -27,21 +28,27 @@ class Spotify : ISource {
     }
 
     override fun getGenre(): List<Track> {
+        return getUsersSavedTracks(false)
+    }
+
+    override fun getCuratedPlaylists(reset: Boolean): List<Playlist> {
+        return getArtists(reset)
+    }
+
+    override fun getCuratedPlaylist(id: String, reset: Boolean): List<Track> {
+        return getArtist(id, reset)
+    }
+
+    override fun getPlaylists(): List<Playlist> {
+        return getUsersPlaylists(true)
+    }
+
+    override fun getPlaylist(id: String): List<Track> {
+        return getPlaylist(id, false)
+    }
+
+    override fun getTop100(): List<Track> {
         return getReleaseRadar(false)
-    }
-
-    override fun getPlaylists(reset: Boolean): List<Playlist> {
-        if (reset)
-            return listOf(Playlist(0, "Release Radar"), Playlist(1, "Saved Tracks"))
-        return emptyList()
-    }
-
-    override fun getPlaylist(id: Int, reset: Boolean): List<Track> {
-        when (id) {
-            0 -> return getReleaseRadar(false)
-            1 -> return getUsersSavedTracks(false)
-        }
-        return emptyList()
     }
 
     override fun query(query: String, refresh: Boolean): List<Track> {
@@ -75,19 +82,39 @@ class Spotify : ISource {
 
     private fun token(): String {
         session?.let {
-            return "Bearer " + it.tokens().getToken("user-library-read", "user-library-modify").accessToken
+            return "Bearer " + it.tokens().getToken("user-library-read", "user-follow-read").accessToken
         } ?: throw Exception("No session!")
     }
 
     private fun getReleaseRadar(refresh: Boolean): List<Track> {
         val response = JSONObject(WebRequests.request(WebRequests.createConnection(RELEASE_RADAR_URL, headers = mapOf("Authorization" to token()))).value)
         val id = response.getJSONObject("playlists").getJSONArray("items").getJSONObject(0).getString("id")
-        val items = request(String.format(PLAYLIST_URL, id), refresh, "tracks")
-        return parseTracks(items)
+        playlists.add(id)
+        return getPlaylist((playlists.size - 1).toString(), refresh)
     }
 
     private fun getUsersSavedTracks(refresh: Boolean): List<Track> {
         val items = request(USERS_SAVED_TRACKS_URL, refresh)
+        return parseTracks(items)
+    }
+
+    private fun getArtists(refresh: Boolean): List<Playlist> {
+        val items = request(USERS_FOLLOWING, refresh, "artists")
+        return parsePlaylists(items)
+    }
+
+    private fun getArtist(id: String, refresh: Boolean): List<Track> {
+        val items = request(ARTIST_TRACKS.format(playlists[id.toInt()]), refresh, "tracks")
+        return parseTracks(items)
+    }
+
+    private fun getUsersPlaylists(refresh: Boolean): List<Playlist> {
+        val items = request(USERS_PLAYLISTS, refresh)
+        return parsePlaylists(items)
+    }
+
+    private fun getPlaylist(id: String, refresh: Boolean): List<Track> {
+        val items = request(String.format(PLAYLIST_URL, playlists[id.toInt()]), refresh, "tracks")
         return parseTracks(items)
     }
 
@@ -101,10 +128,12 @@ class Spotify : ISource {
             url
         }
         var response = JSONObject(WebRequests.request(WebRequests.createConnection(request, headers = mapOf("Authorization" to token()))).value)
-        if (type != null) {
+        if (type != null && response.get(type) is JSONObject) {
             response = response.getJSONObject(type)
         }
         nextQueryUrls[url] = if (!response.isNull("next")) response.getString("next") else "null"
+        if (type != null && response.has(type))
+            return response.getJSONArray(type)
         return response.getJSONArray("items")
     }
 
@@ -124,6 +153,16 @@ class Spotify : ISource {
                 listOf(Artist(1, item.getJSONArray("artists").getJSONObject(0).getString("name"))),
                 item.getString("name"), item.getLong("duration_ms"))
             )
+        }
+        return result
+    }
+
+    private fun parsePlaylists(items: JSONArray): List<Playlist> {
+        val result = mutableListOf<Playlist>()
+        for (i in 0 until items.length()) {
+            val item = items.getJSONObject(i)
+            playlists.add(item.getString("id"))
+            result.add(Playlist(playlists.size.toLong() - 1, item.getString("name")))
         }
         return result
     }
@@ -154,6 +193,9 @@ class Spotify : ISource {
         private const val BASE_URL = "https://api.spotify.com/v1"
         private const val QUERY_URL = "$BASE_URL/search?q=%s&type=track"
         private const val USERS_SAVED_TRACKS_URL = "$BASE_URL/me/tracks"
+        private const val USERS_FOLLOWING = "$BASE_URL/me/following?type=artist"
+        private const val ARTIST_TRACKS = "$BASE_URL/artists/%s/top-tracks?market=US"
+        private const val USERS_PLAYLISTS = "$BASE_URL/me/playlists"
         private const val RELEASE_RADAR_URL = "$BASE_URL/search?q=Release-Radar&type=playlist&limit=1"
         private const val PLAYLIST_URL = "$BASE_URL/playlists/%s"
     }
