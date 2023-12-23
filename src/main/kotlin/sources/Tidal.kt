@@ -23,6 +23,11 @@ class Tidal : ISource {
     }
 
     private var artists = ArrayList<com.tiefensuche.tidal.api.Artist>()
+    private val playlists = mutableListOf<Pair<String, PlaylistType>>()
+    private enum class PlaylistType {
+        PLAYLIST,
+        MIX
+    }
 
     override val name: String
         get() = "Tidal"
@@ -31,15 +36,46 @@ class Tidal : ISource {
         return api.getTracks(false).map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
     }
 
-    override fun getPlaylists(reset: Boolean): List<Playlist> {
+    override fun getCuratedPlaylists(reset: Boolean): List<Playlist> {
         val current = api.getArtists(false)
         artists.addAll(current)
-        return current.mapIndexed { id, artist -> Playlist(artists.size - current.size + id.toLong(), artist.name) }
+        return current.mapIndexed { id, artist -> Playlist((artists.size - current.size + id).toLong(), artist.name) }
     }
 
-    override fun getPlaylist(id: Int, reset: Boolean): List<Track> {
-        return api.getArtist(artists[id].id, false)
+    override fun getPlaylists(): List<Playlist> {
+        val res = api.getMixes().map {
+            playlists.add(Pair(it.uuid, PlaylistType.MIX))
+            Playlist((playlists.size - 1).toLong(), it.title)
+        }.toMutableList()
+
+        res.addAll(api.getPlaylists(true).map {
+            playlists.add(Pair(it.uuid, PlaylistType.PLAYLIST))
+            Playlist((playlists.size - 1).toLong(), it.title)
+        })
+
+        return res
+    }
+
+    override fun getPlaylist(id: String): List<Track> {
+        playlists[id.toInt()].let {
+            return when (it.second) {
+                PlaylistType.PLAYLIST -> api.getPlaylist(it.first, false)
+                PlaylistType.MIX -> api.getMix(it.first, false)
+            }.map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
+        }
+    }
+
+    override fun getCuratedPlaylist(id: String, reset: Boolean): List<Track> {
+        return api.getArtist(artists[id.toInt()].id, false)
             .map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
+    }
+
+    override fun getTop100(): List<Track> {
+        api.getMixes().forEach {
+            if (it.title == "My Daily Discovery")
+                return api.getMix(it.uuid, false).map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
+        }
+        return emptyList()
     }
 
     override fun query(query: String, reset: Boolean): List<Track> {
