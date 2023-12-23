@@ -118,7 +118,13 @@ fun main() {
 
             get("/v4/catalog/search") {
                 call.parameters["q"]?.let {
-                    val results = sources.mapIndexed { id, source -> processTracks(id, source.query(it, !call.parameters.contains("more"))) }.flatten()
+                    val enabled = prop.getProperty("search.enabled", "").split(",").map { name -> allSources[name] }
+                    val results = sources.mapIndexed { id, source ->
+                        if (enabled.contains(null) || source::class.java in enabled)
+                            processTracks(id, source.query(it, !call.parameters.contains("more")))
+                        else
+                            emptyList()
+                    }.flatten()
                     call.respond(QueryTrackResponse(results, if (results.isNotEmpty()) "api.beatport.com/v4/catalog/search?q=$it&more" else ""))
                 }
             }
