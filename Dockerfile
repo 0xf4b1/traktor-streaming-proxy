@@ -21,4 +21,6 @@ RUN patch -d / -p0 < nginx-default.patch && rm nginx-default.patch
 COPY --from=0 /app/build/distributions/traktor-streaming-proxy.tar /app
 RUN tar xf traktor-streaming-proxy.tar --strip-components=1 && rm traktor-streaming-proxy.tar
 
+COPY --from=0 /app/license /app
+
 CMD nginx && bin/traktor-streaming-proxy
