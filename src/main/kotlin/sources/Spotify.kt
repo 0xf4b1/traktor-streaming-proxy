@@ -212,10 +212,10 @@ class Spotify : ISource {
     companion object {
         private const val BASE_URL = "https://api.spotify.com/v1"
         private const val QUERY_URL = "$BASE_URL/search?q=%s&type=track"
-        private const val USERS_SAVED_TRACKS_URL = "$BASE_URL/me/tracks"
-        private const val USERS_FOLLOWING = "$BASE_URL/me/following?type=artist"
+        private const val USERS_SAVED_TRACKS_URL = "$BASE_URL/me/tracks?limit=50"
+        private const val USERS_FOLLOWING = "$BASE_URL/me/following?type=artist&limit=50"
         private const val ARTIST_TRACKS = "$BASE_URL/artists/%s/top-tracks?market=US"
-        private const val USERS_PLAYLISTS = "$BASE_URL/me/playlists"
+        private const val USERS_PLAYLISTS = "$BASE_URL/me/playlists?limit=50"
         private const val RELEASE_RADAR_URL = "$BASE_URL/search?q=Release-Radar&type=playlist&limit=1"
         private const val PLAYLIST_URL = "$BASE_URL/playlists/%s"
     }
