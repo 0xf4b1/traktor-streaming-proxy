@@ -33,7 +33,12 @@ class Tidal : ISource {
         get() = "Tidal"
 
     override fun getGenre(): List<Track> {
-        return api.getTracks(false).map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
+        val res = api.getTracks(true).toMutableList()
+        do {
+            val next = api.getTracks(false)
+            res.addAll(next)
+        } while (next.isNotEmpty())
+        return res.map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
     }
 
     override fun getCuratedPlaylists(reset: Boolean): List<Playlist> {
@@ -59,15 +64,26 @@ class Tidal : ISource {
     override fun getPlaylist(id: String): List<Track> {
         playlists[id.toInt()].let {
             return when (it.second) {
-                PlaylistType.PLAYLIST -> api.getPlaylist(it.first, false)
-                PlaylistType.MIX -> api.getMix(it.first, false)
+                PlaylistType.PLAYLIST -> {
+                    val res = api.getPlaylist(it.first, true).toMutableList()
+                    do {
+                        val next = api.getPlaylist(it.first, false)
+                        res.addAll(next)
+                    } while (next.isNotEmpty())
+                    res
+                }
+                PlaylistType.MIX -> api.getMix(it.first, true)
             }.map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
         }
     }
 
-    override fun getCuratedPlaylist(id: String, reset: Boolean): List<Track> {
-        return api.getArtist(artists[id.toInt()].id, false)
-            .map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
+    override fun getCuratedPlaylist(id: String): List<Track> {
+        val res = api.getArtist(artists[id.toInt()].id, true).toMutableList()
+        do {
+            val next = api.getArtist(artists[id.toInt()].id, false)
+            res.addAll(next)
+        } while (next.isNotEmpty())
+        return res.map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
     }
 
     override fun getTop100(): List<Track> {

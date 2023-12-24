@@ -22,7 +22,7 @@ interface ISource {
     /**
      * Contents showing in Traktor when navigating to Curated Playlists-><source name>-><playlist name>
      */
-    fun getCuratedPlaylist(id: String, reset: Boolean): List<Track>
+    fun getCuratedPlaylist(id: String): List<Track>
 
     /**
      * Playlist names showing in Traktor when navigating to Playlists

@@ -161,7 +161,7 @@ fun main() {
             get("/v4/curation/playlists/{id}/tracks/") {
                 call.parameters["id"]?.let {
                     val sourceId = it.substring(0,1).toInt() - 1
-                    val results = processTracks(sourceId, sources[sourceId].getCuratedPlaylist(it.substring(1), false))
+                    val results = processTracks(sourceId, sources[sourceId].getCuratedPlaylist(it.substring(1)))
                     call.respond(CuratedPlaylistResponse(results.map { track -> PlaylistItem(track) }, "" /* unused by Traktor */))
                 }
             }

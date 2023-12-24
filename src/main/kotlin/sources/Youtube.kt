@@ -29,7 +29,7 @@ class Youtube : ISource {
         return emptyList()
     }
 
-    override fun getCuratedPlaylist(id: String, reset: Boolean): List<Track> {
+    override fun getCuratedPlaylist(id: String): List<Track> {
         return emptyList()
     }
 

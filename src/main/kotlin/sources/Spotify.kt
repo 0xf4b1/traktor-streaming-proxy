@@ -28,15 +28,25 @@ class Spotify : ISource {
     }
 
     override fun getGenre(): List<Track> {
-        return getUsersSavedTracks(false)
+        val res = getUsersSavedTracks(true).toMutableList()
+        do {
+            val next = getUsersSavedTracks(false)
+            res.addAll(next)
+        } while (next.isNotEmpty())
+        return res
     }
 
     override fun getCuratedPlaylists(reset: Boolean): List<Playlist> {
         return getArtists(reset)
     }
 
-    override fun getCuratedPlaylist(id: String, reset: Boolean): List<Track> {
-        return getArtist(id, reset)
+    override fun getCuratedPlaylist(id: String): List<Track> {
+        val res = getArtist(id, true).toMutableList()
+        do {
+            val next = getArtist(id, false)
+            res.addAll(next)
+        } while (next.isNotEmpty())
+        return res
     }
 
     override fun getPlaylists(): List<Playlist> {
@@ -44,11 +54,21 @@ class Spotify : ISource {
     }
 
     override fun getPlaylist(id: String): List<Track> {
-        return getPlaylist(id, false)
+        val res = getPlaylist(id, true).toMutableList()
+        do {
+            val next = getPlaylist(id, false)
+            res.addAll(next)
+        } while (next.isNotEmpty())
+        return res
     }
 
     override fun getTop100(): List<Track> {
-        return getReleaseRadar(false)
+        val res = getReleaseRadar(true).toMutableList()
+        do {
+            val next = getReleaseRadar(false)
+            res.addAll(next)
+        } while (next.isNotEmpty())
+        return res
     }
 
     override fun query(query: String, refresh: Boolean): List<Track> {
