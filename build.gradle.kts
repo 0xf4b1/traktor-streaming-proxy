@@ -26,7 +26,7 @@ dependencies {
     implementation("io.ktor:ktor-server-call-logging:2.2.3")
     implementation("org.slf4j:slf4j-log4j12:2.0.6")
 
-    implementation("com.github.TeamNewPipe.NewPipeExtractor:extractor:v0.22.2")
+    implementation("com.github.TeamNewPipe.NewPipeExtractor:extractor:v0.23.1")
 
     implementation("xyz.gianlu.librespot:librespot-lib:1.6.3")
     implementation("org.json:json:20230227")
