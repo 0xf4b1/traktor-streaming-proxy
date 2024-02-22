@@ -87,9 +87,17 @@ curl https://api.beatport.com/v4/catalog/genres/
 The command should succeed and show some output in JSON.
 If you get SSL certificate errors, you need to fix the configuration.
 
-6. Run Traktor. If you are not yet linked with the server, open settings and connect to Beatport streaming. You should receive an immediate redirect which connects Traktor.
+6. Recent versions of Traktor do not trust the generated certificate and refuse to connect to the server. The certificate verification can be bypassed by preloading a small stub library that lets the respective function always pass to effectively disable the check. This is tested with Traktor 3.11.1 17. If you are using Traktor 3.8.0 46 and before, you can skip this step. Build the stub and run Traktor with the following commands:
 
-7. Done! If you navigate to Beatport Streaming, you should be able to browse through the predefined categories and use the search box to find content.
+```
+cd cert
+make
+DYLD_INSERT_LIBRARIES=./SecTrustEvaluateStub.dylib "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/MacOS/Traktor"
+```
+
+7. Run Traktor. If you are not yet linked with the server, open settings and connect to Beatport streaming. You should receive an immediate redirect which connects Traktor.
+
+8. Done! If you navigate to Beatport Streaming, you should be able to browse through the predefined categories and use the search box to find content.
 
 ## Library Mapping
 
