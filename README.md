@@ -20,11 +20,11 @@ Please note this project and the setup instructions are only tested on macOS. Wh
 ## Setup
 
 1. You need to create a SSL certificate for the domain `api.beatport.com`.
-You can use the script in `cert/gen-cert.sh` to generate a new CA and the server certificate. You have to import the CA certificate into the trust store of the device running Traktor.
+You can use the script in `cert/gen-cert.sh` to generate a new CA and the server certificate.
 
 2. Configure the server by adjusting the `config.properties` file in the project directory. Both Spotify and Tidal sources require an account.
 
-3. You can now choose between a prebuilt Docker container (3.1) or a manual setup (3.2) and continue in both cases with 4.
+3. You can now choose between a prebuilt Docker container (3.1) or building from source (3.2) and continue in both cases with 4.
 
 3.1 Docker
 
@@ -34,9 +34,8 @@ Run the server in the Docker container with the following command:
 docker run -p 443:443 -v <path-to-server.crt>:/app/cert/server.crt -v <path-to-server.key>:/app/cert/server.key -v <path-to-config.properties>:/app/config.properties ghcr.io/0xf4b1/traktor-streaming-proxy:latest
 ```
 
-OR
-
-3.2 Manual
+<details>
+  <summary>3.2 Building from source</summary>
 
 3.2.1 Building
 
@@ -72,13 +71,47 @@ Then reload the changed configuration in nginx.
 
 3.2.4 Start the API server with `./gradlew run`
 
+</details>
+
 4. Redirect `api.beatport.com` to the server by adding the following to `/private/etc/hosts` on macOS
 
 ```
 127.0.0.1   api.beatport.com
 ```
 
-5. Verify that secure connections to the sever are working on the device running Traktor
+5. SSL certificate
+
+5.1 Traktor 3.11.1 17 and higher
+
+Recent versions of Traktor do not trust the generated certificate and refuse to connect to the server. The certificate verification can be bypassed by preloading a small stub library that lets the respective function always pass to effectively disable the check.
+
+You need to create a code signing certificate in Keychain Access -> Certificate Assistant -> Create a certificate ...
+
+Enter a name, e.g. "code", and choose Certificate Type: Code Signing and click Create.
+
+Afterwards resign the Traktor binary with the following command:
+
+```
+sudo codesign --force --sign "code" "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/MacOS/Traktor"
+```
+
+Then build the stub and run Traktor with the following commands:
+
+```
+cd cert
+make
+DYLD_INSERT_LIBRARIES=./SecTrustEvaluateStub.dylib "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/MacOS/Traktor"
+```
+
+5.2 Traktor 3.8.0 46 and older
+
+You have to import the CA certificate `ca.pem` into the trust store of the device running Traktor via Keychain Access or with the following command:
+
+```
+sudo security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain ca.pem
+```
+
+Verify that secure connections to the sever are working
 
 ```
 curl https://api.beatport.com/v4/catalog/genres/
@@ -87,17 +120,9 @@ curl https://api.beatport.com/v4/catalog/genres/
 The command should succeed and show some output in JSON.
 If you get SSL certificate errors, you need to fix the configuration.
 
-6. Recent versions of Traktor do not trust the generated certificate and refuse to connect to the server. The certificate verification can be bypassed by preloading a small stub library that lets the respective function always pass to effectively disable the check. This is tested with Traktor 3.11.1 17. If you are using Traktor 3.8.0 46 and before, you can skip this step. Build the stub and run Traktor with the following commands:
+6. Run Traktor. If you are not yet linked with the server, open settings and connect to Beatport streaming. You should receive an immediate redirect which connects Traktor.
 
-```
-cd cert
-make
-DYLD_INSERT_LIBRARIES=./SecTrustEvaluateStub.dylib "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/MacOS/Traktor"
-```
-
-7. Run Traktor. If you are not yet linked with the server, open settings and connect to Beatport streaming. You should receive an immediate redirect which connects Traktor.
-
-8. Done! If you navigate to Beatport Streaming, you should be able to browse through the predefined categories and use the search box to find content.
+7. Done! If you navigate to Beatport Streaming, you should be able to browse through the predefined categories and use the search box to find content.
 
 ## Library Mapping
 
