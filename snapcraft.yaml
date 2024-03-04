@@ -1,0 +1,33 @@
+name: traktor-streaming-proxy
+title: traktor-streaming-proxy
+version: 'v0.2'
+summary: Allow Traktor DJ to stream music from YouTube by faking Beatport's API
+description: |
+  Traktor DJ supports streaming of music tracks, but only from the Beatport and Beatsource services. This project aims to integrate other streaming sources into Traktor DJ via Beatport Streaming. It consists of an API server based on ktor which fakes some relevant parts of the Beatport API to serve custom content.
+  Currently, it supports YouTube Music (via NewPipe) and allows searching for music and listing trending content. In theory other streaming services or self-hosted sources will be possible to integrate as long as they serve music files in mp4a audio format, since Traktor refuses to load other formats (even though these formats are supported for local files). As a workaround, an on-the-fly format conversion of the music files should be possible at some cost in quality and time.
+  As with Beatport streaming, Traktor does not allow to use the build-in recorder.
+  Please note that the server is currently not fully able to handle Beatport linking and authentication. This means that you must use a valid account to enable Beatport streaming in Traktor and then redirect all API calls to this server. While it's possible to link a free account without a subscription, unfortunately it turned out that you need an active subscription, as upon authentication an encrypted license is loaded and verified, which includes some required options, and without it Trakor won't analyze tracks from the server and will only allow you to load one track at a time.
+  However, if you dump your license file and place it in the app folder, the server is able to let Traktor link and authenticate as long as the license expiration date is not reached. It is possible to set the clock back on the device running Traktor to use an expired license file.
+
+base: core18
+confinement: strict
+
+apps:
+  traktor-streaming-proxy:
+    command: "bin/traktor-streaming-proxy"
+    environment:
+      JAVA_HOME: $SNAP/usr/lib/jvm/java-11-openjdk-amd64
+      PATH: $JAVA_HOME/jre/bin:$PATH
+    plugs:
+      - network
+      - network-bind
+
+parts:
+  traktor-streaming-proxy:
+    plugin: gradle
+    source: https://github.com/0xf4b1/traktor-streaming-proxy.git
+    source-tag: $SNAPCRAFT_PROJECT_VERSION
+    gradle-options: [distTar]
+    override-build: |
+      snapcraftctl build
+      tar xf build/distributions/traktor-streaming-proxy.tar --strip-components=1 -C $SNAPCRAFT_PART_INSTALL/
