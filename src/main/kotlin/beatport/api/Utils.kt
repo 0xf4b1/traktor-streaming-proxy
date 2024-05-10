@@ -5,7 +5,15 @@ import java.lang.Exception
 object Utils {
     fun encode(code: String): Long {
         var res: Long = 0
+        var zeros = 0
+        var countZero = true
         for (i in code.indices) {
+            if (countZero) {
+                if (code[i] == '0')
+                    zeros = zeros.inc()
+                else
+                    countZero = false
+            }
             res = res shl 6
             res = if (code[i] in '0'..'9') {
                 res or (code[i] - '0').toLong()
@@ -21,12 +29,17 @@ object Utils {
                 throw Exception("Unmatched character: ${code[i]}")
             }
         }
+        res = res or (zeros.toLong() shl 60)
         return res
     }
 
     fun decode(code: Long): String {
         var code = code
         var res = ""
+        val zeros = (code shr 60).toInt()
+        if (zeros > 0) {
+            code = code and (15L shl 60).inv()
+        }
         while (code > 0) {
             val cur = code and 63
             if (cur < 10) {
@@ -42,6 +55,6 @@ object Utils {
             }
             code = code shr 6
         }
-        return res
+        return res.padStart(res.length + zeros, '0')
     }
 }
