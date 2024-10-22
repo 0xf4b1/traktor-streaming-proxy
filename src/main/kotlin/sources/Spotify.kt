@@ -1,11 +1,8 @@
 package sources
 
-import Config.prop
 import beatport.api.*
-import com.spotify.connectstate.Connect
 import org.json.JSONArray
 import org.json.JSONObject
-import xyz.gianlu.librespot.audio.HaltListener
 import xyz.gianlu.librespot.audio.decoders.AudioQuality
 import xyz.gianlu.librespot.audio.decoders.VorbisOnlyAudioQuality
 import xyz.gianlu.librespot.core.Session
@@ -82,22 +79,11 @@ class Spotify : ISource {
     }
 
     private fun createSession() {
-        if (!prop.containsKey("spotify.username") || !prop.containsKey("spotify.password")) {
-            throw Exception("Username and/or password missing!")
-        }
-        val username = prop.getProperty("spotify.username")
-        val password = prop.getProperty("spotify.password")
         val conf = Session.Configuration.Builder()
-            .setStoreCredentials(false)
-            .setCacheEnabled(true)
-            .setConnectionTimeout(30 * 1000)
+            .setCacheEnabled(false)
             .build()
-        val builder = Session.Builder(conf)
-            .setPreferredLocale(Locale.getDefault().language)
-            .setDeviceType(Connect.DeviceType.SMARTPHONE)
-            .setDeviceId("4ea37d93fef568dcc3e5c2722e775635830accab")
-            .userPass(username, password)
-        session = builder.create()
+
+        session = Session.Builder(conf).oauth().create()
     }
 
     private fun token(): String {
@@ -189,15 +175,7 @@ class Spotify : ISource {
 
     private fun streamUri(id: String) {
         val uri = "spotify:track:$id"
-        val stream = session!!.contentFeeder().load(
-            TrackId.fromUri(uri),
-            VorbisOnlyAudioQuality(AudioQuality.HIGH),
-            true,
-            object : HaltListener {
-                override fun streamReadHalted(chunk: Int, time: Long) {}
-                override fun streamReadResumed(chunk: Int, time: Long) {}
-            })
-
+        val stream = session!!.contentFeeder().load(TrackId.fromUri(uri), VorbisOnlyAudioQuality(AudioQuality.HIGH), true, null)
         val proc = Runtime.getRuntime().exec(arrayOf("ffmpeg", "-y", "-f", "ogg", "-i", "pipe:", "output.mp4"))
         var cur: Int
         while (stream.`in`.stream().read().also { cur = it } != -1) {
