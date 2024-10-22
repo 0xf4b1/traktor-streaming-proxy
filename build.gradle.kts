@@ -28,7 +28,7 @@ dependencies {
 
     implementation("com.github.teamnewpipe.NewPipeExtractor:extractor:v0.23.1")
 
-    implementation("xyz.gianlu.librespot:librespot-lib:1.6.3")
+    implementation("xyz.gianlu.librespot:librespot-lib:1.6.4")
     implementation("org.json:json:20230227")
 
     implementation("com.tiefensuche:tidal-kt:0.2.0")
