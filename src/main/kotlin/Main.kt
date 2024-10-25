@@ -123,9 +123,7 @@ fun main() {
             }
 
             get("/v4/my/license/") {
-                call.respondBytes(
-                    File("license").inputStream().readBytes()
-                )
+                call.respondBytes(Config::class.java.getResource("license").readBytes())
             }
 
             get("/v4/catalog/search") {
