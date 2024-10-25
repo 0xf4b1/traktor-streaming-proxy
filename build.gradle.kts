@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.8.0"
+    kotlin("jvm") version "2.0.20"
     application
     kotlin("plugin.serialization").version("1.8.0")
 }
@@ -12,18 +12,19 @@ repositories {
 }
 
 dependencies {
-
-    implementation("io.ktor:ktor-server-core-jvm:2.2.3")
-    implementation("io.ktor:ktor-server-netty-jvm:2.2.3")
-    implementation("io.ktor:ktor-server-status-pages-jvm:2.2.3")
-    implementation("io.ktor:ktor-server-default-headers-jvm:2.2.3")
-    implementation("io.ktor:ktor-server-content-negotiation:2.2.3")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.3")
-    implementation("io.ktor:ktor-serialization-kotlinx-xml:2.2.3")
-    implementation("io.ktor:ktor-serialization-kotlinx-cbor:2.2.3")
-    implementation("io.ktor:ktor-serialization-kotlinx-protobuf:2.2.3")
-    implementation("io.ktor:ktor-client-content-negotiation:2.2.3")
-    implementation("io.ktor:ktor-server-call-logging:2.2.3")
+    val ktor_version = "3.0.0"
+    implementation("io.ktor:ktor-server-core-jvm:$ktor_version")
+    implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
+    implementation("io.ktor:ktor-server-status-pages-jvm:$ktor_version")
+    implementation("io.ktor:ktor-server-default-headers-jvm:$ktor_version")
+    implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
+    implementation("io.ktor:ktor-serialization-kotlinx-xml:$ktor_version")
+    implementation("io.ktor:ktor-serialization-kotlinx-cbor:$ktor_version")
+    implementation("io.ktor:ktor-serialization-kotlinx-protobuf:$ktor_version")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
+    implementation("io.ktor:ktor-server-call-logging:$ktor_version")
+    implementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
     implementation("org.slf4j:slf4j-log4j12:2.0.6")
 
     implementation("com.github.teamnewpipe.NewPipeExtractor:extractor:v0.23.1")
