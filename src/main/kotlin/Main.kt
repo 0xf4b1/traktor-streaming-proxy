@@ -1,6 +1,7 @@
 import Config.prop
 import beatport.api.*
 import io.ktor.http.*
+import io.ktor.network.tls.certificates.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.response.*
@@ -8,7 +9,7 @@ import io.ktor.server.routing.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import io.ktor.server.plugins.callloging.*
+import io.ktor.server.plugins.calllogging.*
 import kotlinx.serialization.json.*
 import org.apache.log4j.BasicConfigurator
 import sources.ISource
@@ -83,7 +84,18 @@ fun main() {
             register(it)
     }
 
-    embeddedServer(Netty, port = 8000) {
+    val alias = "foo"
+    embeddedServer(Netty, applicationEnvironment(), {
+        connector { port = 8080 }
+        sslConnector(buildKeyStore {
+            certificate(alias) {
+                password = alias
+                domains = listOf("api.beatport.com")
+            }
+        }, alias, { "".toCharArray() }, { alias.toCharArray() }) {
+            port = 8443
+        }
+    }, module = {
         install(CallLogging)
         install(ContentNegotiation) {
             json(Json {
@@ -160,7 +172,7 @@ fun main() {
 
             get("/v4/curation/playlists/{id}/tracks/") {
                 call.parameters["id"]?.let {
-                    val sourceId = it.substring(0,1).toInt() - 1
+                    val sourceId = it.substring(0, 1).toInt() - 1
                     val results = processTracks(sourceId, sources[sourceId].getCuratedPlaylist(it.substring(1)))
                     call.respond(CuratedPlaylistResponse(results.map { track -> PlaylistItem(track) }, "" /* unused by Traktor */))
                 }
@@ -172,7 +184,7 @@ fun main() {
 
             get("/v4/my/playlists/{id}/tracks/") {
                 call.parameters["id"]?.let {
-                    val sourceId = it.substring(0,1).toInt() - 1
+                    val sourceId = it.substring(0, 1).toInt() - 1
                     val results = processTracks(sourceId, sources[sourceId].getPlaylist(it.substring(1)))
                     call.respond(CuratedPlaylistResponse(results.map { track -> PlaylistItem(track) }, "" /* unused by Traktor */))
                 }
@@ -203,5 +215,5 @@ fun main() {
                 call.respondBytes(data)
             }
         }
-    }.start(wait = true)
+    }).start(wait = true)
 }
