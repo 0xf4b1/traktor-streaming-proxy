@@ -52,13 +52,20 @@ make
 bin/traktor-streaming-proxy
 ```
 
-6. Redirect `api.beatport.com` to the server by adding the following to `/private/etc/hosts` on macOS
+6. Redirect ports 80 -> 8080 and 443 -> 8443
+
+```
+sudo pfctl -f pf.conf
+sudo pfctl -e
+```
+
+7. Redirect `api.beatport.com` to the server by adding the following to `/private/etc/hosts` on macOS
 
 ```
 127.0.0.1   api.beatport.com
 ```
 
-7. Run Traktor with the following command
+8. Run Traktor with the following command
 
 ```
 DYLD_INSERT_LIBRARIES=./SecTrustEvaluateStub.dylib "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/MacOS/Traktor"
@@ -66,7 +73,7 @@ DYLD_INSERT_LIBRARIES=./SecTrustEvaluateStub.dylib "/Applications/Native Instrum
 
 If you are not yet linked with the server, open settings and connect to Beatport streaming. You should receive an immediate redirect which connects Traktor.
 
-8. Done! If you navigate to Beatport Streaming, you should be able to browse through the predefined categories and use the search box to find content.
+9. Done! If you navigate to Beatport Streaming, you should be able to browse through the predefined categories and use the search box to find content.
 
 ## Library Mapping
 
