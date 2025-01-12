@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.8.0"
+    kotlin("jvm") version "2.0.20"
     application
     kotlin("plugin.serialization").version("1.8.0")
 }
@@ -12,25 +12,39 @@ repositories {
 }
 
 dependencies {
-
-    implementation("io.ktor:ktor-server-core-jvm:2.2.3")
-    implementation("io.ktor:ktor-server-netty-jvm:2.2.3")
-    implementation("io.ktor:ktor-server-status-pages-jvm:2.2.3")
-    implementation("io.ktor:ktor-server-default-headers-jvm:2.2.3")
-    implementation("io.ktor:ktor-server-content-negotiation:2.2.3")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.2.3")
-    implementation("io.ktor:ktor-serialization-kotlinx-xml:2.2.3")
-    implementation("io.ktor:ktor-serialization-kotlinx-cbor:2.2.3")
-    implementation("io.ktor:ktor-serialization-kotlinx-protobuf:2.2.3")
-    implementation("io.ktor:ktor-client-content-negotiation:2.2.3")
-    implementation("io.ktor:ktor-server-call-logging:2.2.3")
+    val ktor_version = "3.0.0"
+    implementation("io.ktor:ktor-server-core-jvm:$ktor_version")
+    implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
+    implementation("io.ktor:ktor-server-status-pages-jvm:$ktor_version")
+    implementation("io.ktor:ktor-server-default-headers-jvm:$ktor_version")
+    implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
+    implementation("io.ktor:ktor-serialization-kotlinx-xml:$ktor_version")
+    implementation("io.ktor:ktor-serialization-kotlinx-cbor:$ktor_version")
+    implementation("io.ktor:ktor-serialization-kotlinx-protobuf:$ktor_version")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
+    implementation("io.ktor:ktor-server-call-logging:$ktor_version")
+    implementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
     implementation("org.slf4j:slf4j-log4j12:2.0.6")
 
-    implementation("com.github.TeamNewPipe.NewPipeExtractor:extractor:v0.22.2")
-    implementation("com.squareup.okhttp3:okhttp:4.10.0")
+    implementation("com.github.teamnewpipe.NewPipeExtractor:extractor:v0.23.1")
+
+    implementation("xyz.gianlu.librespot:librespot-lib:1.6.4")
+    implementation("io.github.tiefensuche:spotify-kt:0.1")
+    implementation("com.tiefensuche:tidal-kt:0.2.0")
 
     testImplementation(kotlin("test"))
     implementation(kotlin("stdlib-jdk8"))
+}
+
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/0xf4b1/tidal-kt")
+        credentials {
+            username = System.getenv("GITHUB_ACTOR")
+            password = System.getenv("GITHUB_TOKEN")
+        }
+    }
 }
 
 tasks.test {
@@ -38,7 +52,7 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(8)
+    jvmToolchain(11)
 }
 
 application {
