@@ -27,7 +27,7 @@ dependencies {
     implementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
     implementation("org.slf4j:slf4j-log4j12:2.0.6")
 
-    implementation("com.github.teamnewpipe.NewPipeExtractor:extractor:v0.23.1")
+    implementation("com.github.teamnewpipe.NewPipeExtractor:extractor:v0.24.6")
 
     implementation("xyz.gianlu.librespot:librespot-lib:1.6.4")
     implementation("io.github.tiefensuche:spotify-kt:0.1")
