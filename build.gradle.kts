@@ -30,7 +30,7 @@ dependencies {
     implementation("com.github.teamnewpipe.NewPipeExtractor:extractor:v0.24.6")
 
     implementation("xyz.gianlu.librespot:librespot-lib:1.6.4")
-    implementation("io.github.tiefensuche:spotify-kt:0.1")
+    implementation("com.github.0xf4b1:spotify-kt:v0.1")
     implementation("com.tiefensuche:tidal-kt:0.2.0")
 
     testImplementation(kotlin("test"))
