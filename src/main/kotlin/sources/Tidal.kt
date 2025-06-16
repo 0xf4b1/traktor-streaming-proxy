@@ -88,7 +88,7 @@ class Tidal : ISource {
 
     override fun getTop100(): List<Track> {
         api.getMixes().forEach {
-            if (it.title == "My Daily Discovery")
+            if (it.title == "My New Arrivals")
                 return api.getMix(it.uuid, false).map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
         }
         return emptyList()
