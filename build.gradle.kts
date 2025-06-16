@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    val ktor_version = "3.0.0"
+    val ktor_version = "3.1.3"
     implementation("io.ktor:ktor-server-core-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
     implementation("io.ktor:ktor-server-status-pages-jvm:$ktor_version")
