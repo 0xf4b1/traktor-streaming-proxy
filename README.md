@@ -65,7 +65,28 @@ sudo pfctl -e
 127.0.0.1   api.beatport.com
 ```
 
-8. Run Traktor with the following command
+8. Verify that the setup is working correctly
+
+```
+curl -k https://api.beatport.com/v4/catalog/genres/
+```
+
+The result should be a JSON response similar to the following depending on your enabled sources:
+
+```
+{
+    "results": [
+        {
+            "id": 1,
+            "name": "YouTube"
+        }
+    ]
+}
+```
+
+If you get an error or something different, it will not work with Traktor and you need to fix your setup.
+
+9. Run Traktor with the following command
 
 ```
 DYLD_INSERT_LIBRARIES=./SecTrustEvaluateStub.dylib "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/MacOS/Traktor"
@@ -73,7 +94,7 @@ DYLD_INSERT_LIBRARIES=./SecTrustEvaluateStub.dylib "/Applications/Native Instrum
 
 If you are not yet linked with the server, open settings and connect to Beatport streaming. You should receive an immediate redirect which connects Traktor.
 
-9. Done! If you navigate to Beatport Streaming, you should be able to browse through the predefined categories and use the search box to find content.
+10. Done! If you navigate to Beatport Streaming, you should be able to browse through the predefined categories and use the search box to find content.
 
 ## Library Mapping
 
