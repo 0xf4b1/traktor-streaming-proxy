@@ -69,6 +69,32 @@ fun processTracks(id: Int, tracks: List<Track>): List<TrackResponse> {
     }
 }
 
+/**
+ * Executes a search across enabled sources.
+ *
+ * @param q The raw query string from the request.
+ * @param hasMoreParameter A flag indicating if the 'more' parameter is present.
+ * @return A list of processed track responses.
+ */
+private fun executeSearch(q: String, hasMoreParameter: Boolean): List<TrackResponse> {
+    var query = q
+    val enabledSources = if (q.contains(":")) {
+        val (sourceName, actualQuery) = q.split(":", limit = 2)
+        query = actualQuery
+        listOf(allSources[sourceName])
+    } else {
+        prop.getProperty("search.enabled", "").split(",").map { name -> allSources[name] }
+    }
+
+    return sources.mapIndexed { id, source ->
+        if (enabledSources.contains(null) || source::class.java in enabledSources) {
+            processTracks(id, source.query(query, !hasMoreParameter))
+        } else {
+            emptyList()
+        }
+    }.flatten()
+}
+
 fun main() {
     BasicConfigurator.configure()
 
@@ -127,23 +153,16 @@ fun main() {
             }
 
             get("/v4/catalog/search") {
-                call.parameters["q"]?.let {
-                    var query = it
-                    val enabled = if (it.contains(":")) {
-                        val split = it.split(":")
-                        query = split[1]
-                        listOf(allSources[split[0]])
-                    } else {
-                        prop.getProperty("search.enabled", "").split(",").map { name -> allSources[name] }
-                    }
-                    val results = sources.mapIndexed { id, source ->
-                        if (enabled.contains(null) || source::class.java in enabled)
-                            processTracks(id, source.query(query, !call.parameters.contains("more")))
-                        else
-                            emptyList()
-                    }.flatten()
-                    call.respond(QueryTrackResponse(results, if (results.isNotEmpty()) "api.beatport.com/v4/catalog/search?q=$it&more" else ""))
-                }
+                val q = call.parameters["q"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val results = executeSearch(q, call.parameters.contains("more"))
+                val nextUrl = if (results.isNotEmpty()) "api.beatport.com/v4/catalog/search?q=$q&more" else ""
+                call.respond(QueryTrackResponse(results, nextUrl))
+            }
+
+            get("/search/v1/tracks") {
+                val q = call.parameters["q"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val results = executeSearch(q, call.parameters.contains("more"))
+                call.respond(BeatportSearchResponse(results.toNewSearchApi()))
             }
 
             get("/v4/catalog/genres") {
@@ -214,4 +233,19 @@ fun main() {
             }
         }
     }).start(wait = true)
+}
+
+private fun List<TrackResponse>.toNewSearchApi(): List<BeatportTrack> {
+    return this.map {
+        BeatportTrack(
+            artists = it.artists.map {
+                BeatportArtist(
+                    it.name,
+                    "Artist" // Required by traktor
+                )
+            },
+            track_name = it.name,
+            track_id = it.id,
+            length = it.length_ms)
+    }
 }
