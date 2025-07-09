@@ -47,3 +47,24 @@ data class CuratedPlaylistResponse(val results: List<PlaylistItem>, val next: St
 
 @Serializable
 data class Download(val location: String, val stream_quality: String, val length_ms: Int)
+
+// --- New models for the Beatport Search API response ---
+
+@Serializable
+data class BeatportSearchResponse(
+    val data: List<BeatportTrack>
+)
+
+@Serializable
+data class BeatportTrack(
+    val track_id: Long,
+    val artists: List<BeatportArtist>,
+    val track_name: String,
+    val length: Long,
+)
+
+@Serializable
+data class BeatportArtist(
+    val artist_name: String,
+    val artist_type_name: String // Required by traktor
+)
