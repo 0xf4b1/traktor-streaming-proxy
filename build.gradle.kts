@@ -4,6 +4,7 @@ plugins {
     kotlin("jvm") version "2.0.20"
     application
     kotlin("plugin.serialization").version("1.8.0")
+    id("org.graalvm.buildtools.native") version "0.11.1"
 }
 
 repositories {
@@ -54,4 +55,15 @@ compileKotlin.kotlinOptions {
 val compileTestKotlin: KotlinCompile by tasks
 compileTestKotlin.kotlinOptions {
     jvmTarget = "1.8"
+}
+
+graalvmNative {
+    toolchainDetection.set(true)
+    binaries {
+        named("main") {
+            imageName.set("traktor-streaming-proxy")
+            mainClass.set("MainKt")
+            buildArgs.add("--enable-url-protocols=https")
+        }
+    }
 }
