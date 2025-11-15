@@ -13,6 +13,7 @@ class Tidal : ISource {
     private val api = TidalApi(
         TidalApi.Session(
             prop.getProperty("tidal.clientId"),
+            prop.getProperty("tidal.clientSecret"),
             ::callback
         )
     )
