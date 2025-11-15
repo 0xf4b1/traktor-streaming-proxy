@@ -70,7 +70,7 @@ class Youtube : ISource {
     }
 
     private fun getTrending(): List<Track> {
-        val extractor = ServiceList.YouTube.kioskList.getExtractorById("Trending", null)
+        val extractor = ServiceList.YouTube.kioskList.getExtractorById("trending_music", null)
         extractor.fetchPage()
         return extractItems(extractor.initialPage.items)
     }
