@@ -84,7 +84,7 @@ class Spotify : ISource {
 
     private fun token(): String {
         session?.let {
-            return "Bearer " + it.tokens().getToken("user-library-read", "user-follow-read").accessToken
+            return "Bearer " + it.tokens().getToken().accessToken
         } ?: throw Exception("No session!")
     }
 
@@ -98,7 +98,7 @@ class Spotify : ISource {
     }
 
     private fun mapTracks(tracks: List<io.github.tiefensuche.spotify.api.Track>): List<Track> {
-        return tracks.map { track -> Track(track.id.substring(track.id.lastIndexOf(':') + 1), listOf(Artist(1, track.artist)), track.title, track.duration) }
+        return tracks.filter { it.playable }.map { track -> Track(track.id.substring(track.id.lastIndexOf(':') + 1), listOf(Artist(1, track.artist)), track.title, track.duration) }
     }
 
     private fun mapPlaylists(playlists: List<io.github.tiefensuche.spotify.api.Playlist>): List<Playlist> {

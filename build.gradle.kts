@@ -28,9 +28,8 @@ dependencies {
     implementation("org.slf4j:slf4j-log4j12:2.0.6")
 
     implementation("com.github.teamnewpipe.NewPipeExtractor:extractor:v0.24.8")
-
-    implementation("xyz.gianlu.librespot:librespot-lib:1.6.4")
-    implementation("com.github.0xf4b1:spotify-kt:v0.1")
+    implementation("com.github.librespot-org.librespot-java:librespot-lib:52a8c24215")
+    implementation("com.github.0xf4b1:spotify-kt:275f290e64")
     implementation("com.github.0xf4b1:tidal-kt:v0.3.0")
 
     testImplementation(kotlin("test"))
