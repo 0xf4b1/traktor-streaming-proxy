@@ -5,8 +5,13 @@ import beatport.api.Artist
 import beatport.api.Playlist
 import beatport.api.Track
 import com.tiefensuche.tidal.api.TidalApi
+import org.xml.sax.Attributes
+import org.xml.sax.InputSource
+import org.xml.sax.helpers.DefaultHandler
+import java.io.ByteArrayOutputStream
+import java.io.StringReader
 import java.net.URL
-import java.util.*
+import javax.xml.parsers.SAXParserFactory
 
 class Tidal : ISource {
 
@@ -101,8 +106,46 @@ class Tidal : ISource {
     }
 
     override fun download(id: String): ByteArray {
-        val con = URL(api.getStreamUrl(id.toLong())).openConnection()
-        return con.getInputStream().readBytes()
+        val manifest = api.getStreamManifest(id.toLong())
+        val factory = SAXParserFactory.newInstance()
+        val parser = factory.newSAXParser()
+        val mpd = object : DefaultHandler() {
+            var initialization: String = ""
+            var media: String = ""
+            var startNumber = 0
+            var endNumber = 0
+            override fun startElement(
+                uri: String,
+                localName: String,
+                qName: String,
+                attributes: Attributes
+            ) {
+                when (qName) {
+                    "SegmentTemplate" -> {
+                        initialization = attributes.getValue("initialization")!!
+                        media = attributes.getValue("media")!!
+                        startNumber = attributes.getValue("startNumber")!!.toInt()
+                    }
+                    "S" -> {
+                        endNumber++
+                        attributes.getValue("r")?.let {
+                            endNumber += it.toInt()
+                        }
+                    }
+                }
+            }
+        }
+        parser.parse(InputSource(StringReader(manifest)), mpd)
+
+        val out = ByteArrayOutputStream()
+        var con = URL(mpd.initialization).openConnection()
+        out.write(con.getInputStream().readBytes())
+        for (i in mpd.startNumber..mpd.endNumber) {
+            val url = mpd.media.replace("\$Number\$", i.toString())
+            con = URL(url).openConnection()
+            out.write(con.getInputStream().readBytes())
+        }
+        return out.toByteArray()
     }
 
     private fun readConfig(): Boolean {
