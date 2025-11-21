@@ -1,7 +1,6 @@
 import Config.prop
 import beatport.api.*
 import io.ktor.http.*
-import io.ktor.network.tls.certificates.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.response.*
@@ -19,6 +18,7 @@ import sources.Youtube
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.security.KeyStore
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.math.min
@@ -111,14 +111,22 @@ fun main() {
     }
 
     val alias = "foo"
+    val password = "changeit"
+
+    val keyStore = KeyStore.getInstance("JKS").apply {
+        File("cert/keystore.jks").inputStream().use {
+            load(it, password.toCharArray())
+        }
+    }
+
     embeddedServer(Netty, applicationEnvironment(), {
         connector { port = 8080 }
-        sslConnector(buildKeyStore {
-            certificate(alias) {
-                password = alias
-                domains = listOf("api.beatport.com")
-            }
-        }, alias, { "".toCharArray() }, { alias.toCharArray() }) {
+        sslConnector(
+            keyStore,
+            alias,
+            { password.toCharArray() },
+            { password.toCharArray() }
+        ) {
             port = 8443
         }
     }, module = {
@@ -149,7 +157,14 @@ fun main() {
             }
 
             get("/v4/my/license/") {
-                call.respondBytes(Config::class.java.getResource("license").readBytes())
+                val licenseName = prop.getProperty("beatport.license", "macos")
+                val licenseFile = Config::class.java.getResource("licenses/${licenseName}.json")
+
+                if (licenseFile == null) {
+                    call.respond(HttpStatusCode.InternalServerError, "License file '${licenseName}' not found")
+                } else {
+                    call.respondBytes(licenseFile.readBytes())
+                }
             }
 
             get("/v4/catalog/search") {
