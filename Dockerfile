@@ -16,6 +16,7 @@ RUN apt install -y openjdk-18-jre-headless ffmpeg
 WORKDIR /app
 
 COPY --from=0 /app/build/distributions/traktor-streaming-proxy.tar /app
+COPY --from=0 /app/cert/*.jks /app/cert/keystore.jks
 RUN tar xf traktor-streaming-proxy.tar --strip-components=1 && rm traktor-streaming-proxy.tar
 
 CMD bin/traktor-streaming-proxy

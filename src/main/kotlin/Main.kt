@@ -1,13 +1,14 @@
 import Config.prop
 import beatport.api.*
 import io.ktor.http.*
-import io.ktor.network.tls.certificates.*
+import io.ktor.network.tls.certificates.buildKeyStore
 import io.ktor.server.application.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.engine.*
+import io.ktor.server.engine.sslConnector
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.calllogging.*
 import kotlinx.serialization.json.*
@@ -19,6 +20,7 @@ import sources.Youtube
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.security.KeyStore
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.math.min
@@ -30,7 +32,8 @@ val traktorIdToTrackId: HashMap<Long, String> = HashMap()
 val allSources = mapOf(
     "youtube" to Youtube::class.java,
     "spotify" to Spotify::class.java,
-    "tidal" to Tidal::class.java)
+    "tidal" to Tidal::class.java
+)
 
 object Config {
     val prop = Properties()
@@ -111,17 +114,40 @@ fun main() {
     }
 
     val alias = "foo"
-    embeddedServer(Netty, applicationEnvironment(), {
-        connector { port = 8080 }
-        sslConnector(buildKeyStore {
-            certificate(alias) {
-                password = alias
-                domains = listOf("api.beatport.com")
+    var serverConfiguration: NettyApplicationEngine.Configuration.() -> Unit
+
+    if(prop.getProperty("server.useKeystore", "false").toBoolean()) {
+        val keystorePassword = "changeit"
+
+        val keyStore = KeyStore.getInstance("JKS").apply {
+            File("cert/keystore.jks").inputStream().use {
+                load(it, keystorePassword.toCharArray())
             }
-        }, alias, { "".toCharArray() }, { alias.toCharArray() }) {
-            port = 8443
         }
-    }, module = {
+        serverConfiguration = {
+            sslConnector(
+                keyStore,
+                alias,
+                { keystorePassword.toCharArray() },
+                { keystorePassword.toCharArray() }
+            ) {
+                port = 8443
+            }
+        }
+    } else {
+        serverConfiguration = {
+            sslConnector(buildKeyStore {
+                certificate(alias) {
+                    password = alias
+                    domains = listOf("api.beatport.com")
+                }
+            }, alias, { "".toCharArray() }, { alias.toCharArray() }) {
+                port = 8443
+            }
+        }
+    }
+
+    embeddedServer(Netty, applicationEnvironment(), serverConfiguration, module = {
         install(CallLogging)
         install(ContentNegotiation) {
             json(Json {
@@ -149,7 +175,14 @@ fun main() {
             }
 
             get("/v4/my/license/") {
-                call.respondBytes(Config::class.java.getResource("license").readBytes())
+                val licenseName = prop.getProperty("beatport.license", "macos")
+                val licenseFile = Config::class.java.getResource("licenses/${licenseName}.json")
+
+                if (licenseFile == null) {
+                    call.respond(HttpStatusCode.InternalServerError, "License file '${licenseName}' not found")
+                } else {
+                    call.respondBytes(licenseFile.readBytes())
+                }
             }
 
             get("/v4/catalog/search") {
@@ -182,7 +215,8 @@ fun main() {
             get("/v4/curation/playlists/") {
                 call.parameters["genre_id"]?.let {
                     val results = sources[it.toInt() - 1].getCuratedPlaylists(!call.parameters.contains("more")).map { playlist ->
-                        Playlist((it + playlist.id).toLong(), playlist.name) }
+                        Playlist((it + playlist.id).toLong(), playlist.name)
+                    }
                     call.respond(CuratedPlaylistsResponse(results, if (results.isNotEmpty()) "api.beatport.com/v4/curation/playlists/?genre_id=$it&more" else ""))
                 }
             }
@@ -246,6 +280,7 @@ private fun List<TrackResponse>.toNewSearchApi(): List<BeatportTrack> {
             },
             track_name = it.name,
             track_id = it.id,
-            length = it.length_ms)
+            length = it.length_ms
+        )
     }
 }
