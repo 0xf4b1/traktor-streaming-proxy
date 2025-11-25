@@ -15,9 +15,8 @@ As with Beatport streaming, Traktor does not allow to use the build-in recorder.
 
 The project now contains a fully crafted Beatport license file that allows the server to handle linking and authentication, with enabling all features such as track analysis and simultaneous playback of multiple decks. You no longer need to take care of the license file or have a Beatport account with subscription! :)
 
-Please note this project and the setup instructions are only tested on macOS. While it is possible to set it up on Windows in a similar way, Traktor on Windows uses different client certificates and does not work with the license file in this project (but there is a trick to get it working https://github.com/0xf4b1/traktor-streaming-proxy/issues/13#issuecomment-1742184706).
-
 ## Setup
+### MacOS
 
 1. Get the latest [release](https://github.com/0xf4b1/traktor-streaming-proxy/releases) and unzip.
 
@@ -96,6 +95,46 @@ If you are not yet linked with the server, open settings and connect to Beatport
 
 10. Done! If you navigate to Beatport Streaming, you should be able to browse through the predefined categories and use the search box to find content.
 
+### Windows
+Huge thanks to [@v1nc](https://github.com/v1nc) for providing a working setup for Windows and the Traktor patcher!
+
+1. Install Docker desktop [with WSL](https://docs.docker.com/desktop/features/wsl/)
+2. Enable "Start Docker Desktop when you sign in to your computer" in the Docker Desktop settings to make it run at login
+3. Start an Ubuntu WSL shell (or your preferred distribution)
+4. Clone this repository: `git clone https://github.com/0xf4b1/traktor-streaming-proxy.git` and navigate to the folder: `cd traktor-streaming-proxy`
+5. Adjust the `src/main/dist/config.properties` file to your needs. Make sure to change `beatport.license` to `windows` and `server.useKeystore` to `true`.
+6. Generate the required SSL certificates by running `./cert/gen-cert.sh`.
+7. Trust the generated `./cert/server.crt` on your machine: For Ubuntu WSL, go to `\\wsl.localhost\Ubuntu\home\username\traktor-streaming-proxy\cert` in you explorer, click on `server.crt`, select *Install certificate*, select *Local computer*, click *Next*, select *All certificates* and choose *Trusted Root Certification Authorities*, then install the certificate.
+8. Create and start Docker image:
+```
+docker build -t traktor-streaming-proxy .
+docker run -d --name traktor-streaming-proxy-container -p 443:8443 --restart always traktor-streaming-proxy
+```
+9. Make your system use the proxy by appending the following line to your `C:\Windows\System32\drivers\etc\hosts` file:
+```
+127.0.0.1   api.beatport.com
+```
+10. You should now be able to open `https://api.beatport.com/v4/catalog/genres/` in your browser and see the configured providers without any SSL warnings or errors.
+11. Patch `Traktor.exe` to make it accept the custom beatport license: Run `python patch_traktor.py` and input the path to your `Traktor.exe`. If you copy your `Traktor.exe` to the path mentioned in 7., you can run it in WSL so you don't need to install Python on Windows. After that copy back the patched binary to the Traktor program path. Alternatively, see the notes below to patch it manually.
+12. Run the patched Traktor binary, go to *settings*, *streaming* and click *Login on Beatport*. If you just booted your device, wait a minute for the docker container to start. If you start Traktor before the container runs, you will need to click *Login to Beatport* again
+13. Everything should work :)
+
+
+#### Notes
+the `patch_traktor.py` script was only tested on Traktor version 4.11.23 but should work on any version that uses the same certificate. If it does not work for you, you can patch the `Traktor.exe` manually:
+    1. Download a hex editor like [hxd](https://mh-nexus.de/de/hxd/)
+    2. Backup `C:\Program Files\Native Instruments\Traktor xx\Traktor.exe` and open it with your hex editor
+    3. Search for `-----BEGIN PUBLIC KEY-----`. It should be the first occurrence, but verify it is the windows key listed [here](https://github.com/0xf4b1/traktor-streaming-proxy/issues/13#issuecomment-1742184706)
+    4. Replace the key with the mac key listed [here](https://github.com/0xf4b1/traktor-streaming-proxy/issues/13#issuecomment-1742184706). Dots in the hex editor represent new lines, so the best way is to replace the key line per line, leaving the dots where they are.
+    5. Save the binary, if hxd warns you about a changing binary size, you did something wrong.
+    6. Copy the binary back to `C:\Program Files\Native Instruments\Traktor xx\` if you moved it. Run it to verify it works
+    7. Obviously you can not use the usual Beatport API with this version
+
+In some Windows installations, Traktor is unable to analyze tracks downloaded from YouTube and fails with an error message:
+
+`Cannot execute BPM-detection due to missing transients. Please analyze first`
+
+This issue is related to the used codec in the downloaded audio file. We are currently working on a fix.
 ## Library Mapping
 
 Beatport Streaming has the following predefined categories, which we try to match to our available sources in the best possible way.
