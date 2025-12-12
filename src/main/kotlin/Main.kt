@@ -68,7 +68,7 @@ fun processTracks(id: Int, tracks: List<Track>): List<TrackResponse> {
         if (!traktorIdToTrackId.containsKey(traktorId)) {
             traktorIdToTrackId[traktorId] = if (track.id.length > 10) track.id.substring(10) else ""
         }
-        TrackResponse(traktorId, track.artists, track.name, track.length_ms)
+        TrackResponse(traktorId, track.artists, track.name, track.length_ms, track.release)
     }
 }
 
