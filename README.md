@@ -1,89 +1,97 @@
 # traktor-streaming-proxy
-Allow Traktor DJ to stream music from YouTube by faking Beatport's API
+Allow Traktor DJ to stream music from YouTube, Spotify, and Tidal by faking Beatport's API
+
+<img src="screenshot.png" align="right" width="250"></a>
 
 Traktor DJ supports streaming of music tracks, but only from the Beatport and Beatsource services.
 This project aims to integrate other streaming sources into Traktor DJ via Beatport Streaming.
 It consists of an API server based on ktor which fakes some relevant parts of the Beatport API to serve custom content.
 
-Currently, it supports YouTube Music (via NewPipe) and allows searching for music and listing trending content.
+Currently, it supports YouTube Music (via NewPipe), Spotify, and Tidal with support for searching for music and browsing saved tracks and playlists.
 In theory other streaming services or self-hosted sources will be possible to integrate as long as they serve music files in mp4a audio format, since Traktor refuses to load other formats (even though these formats are supported for local files).
 As a workaround, an on-the-fly format conversion of the music files should be possible at some cost in quality and time.
 
 As with Beatport streaming, Traktor does not allow to use the build-in recorder.
 
-Please note that the server is currently not fully able to handle Beatport linking and authentication.
-This means that you must use a valid account to enable Beatport streaming in Traktor and then redirect all API calls to this server.
-While it's possible to link a free account without a subscription, unfortunately it turned out that you need an active subscription, as upon authentication an encrypted license is loaded and verified, which includes some required options, and without it Trakor won't analyze tracks from the server and will only allow you to load one track at a time.
+The project now contains a fully crafted Beatport license file that allows the server to handle linking and authentication, with enabling all features such as track analysis and simultaneous playback of multiple decks. You no longer need to take care of the license file or have a Beatport account with subscription! :)
 
-However, if you dump your license file and place it in the app folder, the server is able to let Traktor link and authenticate as long as the license expiration date is not reached.
-It is possible to set the clock back on the device running Traktor to use an expired license file.
-
-## Docker
-
-Run the server in the Docker container with the following command:
-
-```
-docker run -p 443:443 -v <path-to-server.crt>:/app/cert/server.crt -v <path-to-server.key>:/app/cert/server.key -v <path-to-license>:/app/license -e BEATPORT_ACCOUNT_ID=<your-account-id> ghcr.io/0xf4b1/traktor-streaming-proxy:latest
-```
-
-## Building
-
-```
-./gradlew build
-```
+Please note this project and the setup instructions are only tested on macOS. While it is possible to set it up on Windows in a similar way, Traktor on Windows uses different client certificates and does not work with the license file in this project (but there is a trick to get it working https://github.com/0xf4b1/traktor-streaming-proxy/issues/13#issuecomment-1742184706).
 
 ## Setup
 
-1. You need to create a SSL certificate for the domain `api.beatport.com`.
-You can use the script in `cert/gen-cert.sh` to generate a new CA and the server certificate. You have to import the CA certificate into the trust store of the device running Traktor.
+1. Get the latest [release](https://github.com/0xf4b1/traktor-streaming-proxy/releases) and unzip.
 
-2. Install and configure nginx with SSL and a proxy_pass to this server.
+2. Configure the server by adjusting the `config.properties` file. Both Spotify and Tidal sources require an account.
 
-Edit nginx site config `/etc/nginx/sites-available/default` with the following parts:
+3. (Optional) Install ffmpeg on your system if you want to use the spotify source.
+
+4. SSL trust
+
+Recent versions of Traktor do not trust the generated certificate and refuse to connect to the server. The certificate verification can be bypassed by preloading a small stub library that lets the respective function always pass to effectively disable the check.
+
+You need to create a code signing certificate in Keychain Access -> Certificate Assistant -> Create a certificate ...
+
+Enter a name, e.g. "code", and choose Certificate Type: Code Signing and click Create.
+
+Afterwards resign the Traktor binary with the following command:
 
 ```
-server {
-        listen 443 ssl default_server;
-        listen [::]:443 ssl default_server;
-
-        ssl_certificate     server.crt;
-        ssl_certificate_key server.key;
-        ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
-        ssl_ciphers         HIGH:!aNULL:!MD5;
-
-        location / {
-                proxy_pass http://127.0.0.1:8000;
-        }
-}
+sudo codesign --force --sign "code" "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/MacOS/Traktor"
 ```
 
-Then reload the changed configuration in nginx.
+Then either get the prebuilt stub `SecTrustEvaluateStub.dylib` from [releases](https://github.com/0xf4b1/traktor-streaming-proxy/releases) or build it yourself:
 
-3. Start the API server with `./gradlew run`
+```
+cd cert
+make
+```
 
-3. Redirect `api.beatport.com` to the server by adding the following to `/private/etc/hosts` on macOS
+5. Run the server from the directory where the config.properties file is located
+
+```
+bin/traktor-streaming-proxy
+```
+
+6. Redirect ports 80 -> 8080 and 443 -> 8443
+
+```
+sudo pfctl -f pf.conf
+sudo pfctl -e
+```
+
+7. Redirect `api.beatport.com` to the server by adding the following to `/private/etc/hosts` on macOS
 
 ```
 127.0.0.1   api.beatport.com
 ```
 
-4. Verify that secure connections to the sever are working on the device running Traktor
+8. Run Traktor with the following command
 
 ```
-curl https://api.beatport.com/v4/catalog/genres/
+DYLD_INSERT_LIBRARIES=./SecTrustEvaluateStub.dylib "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/MacOS/Traktor"
 ```
 
-The command should succeed and show some output in JSON.
-If you get SSL certificate errors, you need to fix the configuration.
+If you are not yet linked with the server, open settings and connect to Beatport streaming. You should receive an immediate redirect which connects Traktor.
 
-## Running
+9. Done! If you navigate to Beatport Streaming, you should be able to browse through the predefined categories and use the search box to find content.
 
-1. Start the server with `./gradlew run`
+## Library Mapping
 
-2. Temporarily disable the redirect in `/private/etc/hosts` by commenting the line out
+Beatport Streaming has the following predefined categories, which we try to match to our available sources in the best possible way.
+The genres are identical in each category, which is why we use them to differentiate between the sources.
 
-3. Start Traktor and make sure that Beatport streaming is showing up in the browser. If you are not linked, open settings and connect to Beatport streaming by logging in with your account.
-
-4. Then redirect `api.beatport.com` to the server by uncommenting the line in `/private/etc/hosts` again.
-
-5. You should be able to use Beatport search to find content from YouTube Music. If you navigate to Genres->YouTube, you should see trending content.
+```
+Curated Playlists
+- <Genres>         --> source
+ - <Playlists>     --> followed artists
+  - <Tracks>       --> tracks from artist
+Genres
+- <Genres>         --> source
+ - <Tracks>        --> saved/liked tracks in source
+Playlists
+- <Playlists>      --> playlists (all sources merged)
+ - <Tracks>        --> tracks from playlist
+Top 100
+- <Genres>         --> source
+ - <Tracks>        --> generated playlist of new released tracks
+```
