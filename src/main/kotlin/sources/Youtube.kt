@@ -88,7 +88,8 @@ class Youtube : ISource {
     private fun getAudioStream(url: String): String {
         val extractor = ServiceList.YouTube.getStreamExtractor("https://www.youtube.com/watch?v=$url")
         extractor.fetchPage()
-        return extractor.audioStreams.filter { it.format!!.name == "m4a" }.maxBy { it.averageBitrate }.content
+        return extractor.audioStreams.filter { it.format?.name == "m4a" }.maxByOrNull { it.averageBitrate }?.content
+            ?: throw Exception("No m4a audio stream available for video: $url")
     }
 
     class Downloader : org.schabi.newpipe.extractor.downloader.Downloader() {

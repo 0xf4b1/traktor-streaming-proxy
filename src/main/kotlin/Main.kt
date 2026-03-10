@@ -125,24 +125,30 @@ fun main() {
             }
         }
         serverConfiguration = {
+            connector {
+                port = 80
+            }
             sslConnector(
                 keyStore,
                 alias,
                 { keystorePassword.toCharArray() },
                 { keystorePassword.toCharArray() }
             ) {
-                port = 8443
+                port = 443
             }
         }
     } else {
         serverConfiguration = {
+            connector {
+                port = 80
+            }
             sslConnector(buildKeyStore {
                 certificate(alias) {
                     password = alias
                     domains = listOf("api.beatport.com")
                 }
             }, alias, { "".toCharArray() }, { alias.toCharArray() }) {
-                port = 8443
+                port = 443
             }
         }
     }
@@ -249,9 +255,24 @@ fun main() {
 
             get("/v4/catalog/tracks/{id}/download/") {
                 call.parameters["id"]?.let {
-                    val trackId = Utils.decode(it.toLong()) + traktorIdToTrackId[it.toLong()]!!
-                    data = sources[trackIdToSource[trackId]!!].download(trackId)
-                    call.respond(Download("https://api.beatport.com/output.mp4", "foo", 1337))
+                    try {
+                        val traktorId = it.toLong()
+                        val suffix = traktorIdToTrackId[traktorId] ?: ""
+                        val trackId = Utils.decode(traktorId) + suffix
+                        
+                        if (!trackIdToSource.containsKey(trackId)) {
+                            call.respond(io.ktor.http.HttpStatusCode.BadRequest, 
+                                mapOf("error" to "Track not found in cache. Track ID: $trackId (decoded: ${Utils.decode(traktorId)}, suffix: $suffix)"))
+                            return@let
+                        }
+                        
+                        val sourceIndex = trackIdToSource[trackId]!!
+                        data = sources[sourceIndex].download(trackId)
+                        call.respond(Download("https://api.beatport.com/output.mp4", "foo", 1337))
+                    } catch (e: Exception) {
+                        call.respond(io.ktor.http.HttpStatusCode.InternalServerError, 
+                            mapOf("error" to "Download failed: ${e.message}"))
+                    }
                 }
             }
 

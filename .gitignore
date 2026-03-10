@@ -26,5 +26,8 @@ replay_pid*
 cert/ca.*
 cert/keystore.*
 cert/server.*
+cert/SecTrustEvaluateStub.dylib
 
 .idea
+.gradle/
+build/
