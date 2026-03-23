@@ -35,3 +35,7 @@ config.properties
 credentials.json
 
 .DS_Store
+.classpath
+.project
+.settings/
+.claude/
