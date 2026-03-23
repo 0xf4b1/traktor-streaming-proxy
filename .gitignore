@@ -28,3 +28,10 @@ cert/keystore.*
 cert/server.*
 
 .idea
+build/
+.gradle/
+bin/
+config.properties
+credentials.json
+
+.DS_Store

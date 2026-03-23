@@ -56,8 +56,10 @@ object Config {
 fun register(source: Class<out ISource>) {
     try {
         sources.add(source.getConstructor().newInstance())
+        println("Successfully registered $source")
     } catch (ex: Exception) {
-        println("Can not instantiate $source: ${ex.printStackTrace()}")
+        println("Can not instantiate $source:")
+        ex.printStackTrace()
     }
 }
 
@@ -108,10 +110,15 @@ fun main() {
         }
     })
 
-    prop.getProperty("sources.enabled", "").split(",").map { name -> allSources[name] }.forEach {
+    val enabledSources = prop.getProperty("sources.enabled", "")
+    println("Loading sources: $enabledSources")
+    enabledSources.split(",").map { name -> allSources[name.trim()] }.forEach {
         if (it != null)
             register(it)
+        else
+            println("Source not found in allSources map")
     }
+    println("Loaded ${sources.size} sources")
 
     val alias = "foo"
     var serverConfiguration: NettyApplicationEngine.Configuration.() -> Unit
@@ -249,9 +256,25 @@ fun main() {
 
             get("/v4/catalog/tracks/{id}/download/") {
                 call.parameters["id"]?.let {
-                    val trackId = Utils.decode(it.toLong()) + traktorIdToTrackId[it.toLong()]!!
-                    data = sources[trackIdToSource[trackId]!!].download(trackId)
-                    call.respond(Download("https://api.beatport.com/output.mp4", "foo", 1337))
+                    try {
+                        val traktorId = it.toLong()
+                        val trackIdSuffix = traktorIdToTrackId[traktorId]
+                        if (trackIdSuffix == null) {
+                            call.respond(HttpStatusCode.NotFound, "Track not found - try searching for it again")
+                            return@let
+                        }
+                        val trackId = Utils.decode(traktorId) + trackIdSuffix
+                        val sourceIdx = trackIdToSource[trackId]
+                        if (sourceIdx == null) {
+                            call.respond(HttpStatusCode.NotFound, "Track source not found")
+                            return@let
+                        }
+                        data = sources[sourceIdx].download(trackId)
+                        call.respond(Download("https://api.beatport.com/output.mp4", "foo", 1337))
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        call.respond(HttpStatusCode.InternalServerError, "Download failed: ${e.message}")
+                    }
                 }
             }
 
