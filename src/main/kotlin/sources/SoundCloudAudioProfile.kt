@@ -5,18 +5,19 @@ internal enum class SoundCloudAudioProfile(
 ) {
     OFF(null),
     CLEAN(
-        "highpass=f=20,aresample=48000:resampler=soxr:precision=28"
+        "highpass=f=20," +
+            "aresample=48000:resampler=soxr:precision=28:out_channel_layout=stereo"
     ),
     NORMALIZED(
         "highpass=f=20," +
             "loudnorm=I=-14:LRA=11:TP=-1.5," +
-            "aresample=48000:resampler=soxr:precision=28"
+            "aresample=48000:resampler=soxr:precision=28:out_channel_layout=stereo"
     ),
     SOFT_HIGHS(
         "highpass=f=20," +
             "highshelf=f=12000:g=-2," +
             "loudnorm=I=-14:LRA=11:TP=-1.5," +
-            "aresample=48000:resampler=soxr:precision=28"
+            "aresample=48000:resampler=soxr:precision=28:out_channel_layout=stereo"
     );
 
     val requiresTranscode: Boolean

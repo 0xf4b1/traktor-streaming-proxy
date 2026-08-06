@@ -132,7 +132,7 @@ class SoundCloud : ISource {
         audioSettings.qualityMode.name,
         audioSettings.preferRemux,
         audioSettings.transcodeBitrate,
-        audioSettings.audioProfile.name
+        audioSettings.audioProfile.filterChain ?: "off"
     ).joinToString("|")
 
     private fun resolveAudioStream(id: String): AudioStream {

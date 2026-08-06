@@ -208,7 +208,7 @@ soundcloud.audioProfile=clean
 The profiles are:
 
 - `off`: no filters; permits direct AAC remux when `preferRemux=true`
-- `clean`: 48 kHz high-quality SoXR resampling and a 20 Hz high-pass (default)
+- `clean`: stereo, 48 kHz high-quality SoXR resampling and a 20 Hz high-pass (default)
 - `normalized`: `clean` plus EBU R128 loudness normalization to -14 LUFS
 - `softHighs`: `normalized` plus a gentle 2 dB high-frequency reduction
 

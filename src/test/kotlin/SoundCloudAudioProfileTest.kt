@@ -30,8 +30,9 @@ class SoundCloudAudioProfileTest {
     }
 
     @Test
-    fun processingProfilesEndWithHighQualityResampling() {
-        val expected = "aresample=48000:resampler=soxr:precision=28"
+    fun processingProfilesEndWithStereoHighQualityResampling() {
+        val expected = "aresample=48000:resampler=soxr:precision=28:" +
+            "out_channel_layout=stereo"
 
         assertTrue(requireNotNull(SoundCloudAudioProfile.CLEAN.filterChain).endsWith(expected))
         assertTrue(requireNotNull(SoundCloudAudioProfile.NORMALIZED.filterChain).endsWith(expected))
