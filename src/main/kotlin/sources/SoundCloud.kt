@@ -7,20 +7,21 @@ import org.schabi.newpipe.extractor.InfoItem
 import org.schabi.newpipe.extractor.Page
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.services.soundcloud.linkHandler.SoundcloudSearchQueryHandlerFactory.TRACKS
+import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
+import java.io.OutputStream
 import java.util.concurrent.ConcurrentHashMap
 
 class SoundCloud : ISource {
     private val nextSearchPages = ConcurrentHashMap<String, Page>()
     private val exhaustedSearches = ConcurrentHashMap.newKeySet<String>()
-    private val trackIds = TrackIdRegistry()
     private val audioSettings by lazy { SoundCloudAudioSettings.from(prop) }
     private val account by lazy {
         OAuthCredentialStore.fromConfig(
             "soundcloud.oauth.file",
             "SOUNDCLOUD_OAUTH_FILE",
             "https://secure.soundcloud.com/oauth/token"
-        )?.let { SoundCloudAccountClient(it, trackIds) }
+        )?.let(::SoundCloudAccountClient)
     }
     private val configuredPlaylistUrls by lazy {
         prop.getProperty("soundcloud.playlists", "")
@@ -117,26 +118,37 @@ class SoundCloud : ISource {
     }
 
     override fun download(id: String): ByteArray {
-        val trackUrl = trackIds.decode(id)
-            ?: throw IllegalArgumentException("Unknown SoundCloud track ID: $id")
-        val extractor = ServiceList.SoundCloud.getStreamExtractor(trackUrl)
-        extractor.fetchPage()
-
-        val stream = SoundCloudAudioSelector.select(
-            extractor.audioStreams,
-            audioSettings.qualityMode
-        )
-            ?: throw IllegalStateException("No playable SoundCloud audio stream found for $id")
-
+        val stream = resolveAudioStream(id)
         return FfmpegTranscoder.audioUrlToMp4(
             stream.content,
-            remux = audioSettings.preferRemux &&
-                !audioSettings.audioProfile.requiresTranscode &&
-                SoundCloudAudioSelector.canRemux(stream),
+            remux = shouldRemux(stream),
             transcodeBitrate = audioSettings.transcodeBitrate,
             audioFilter = audioSettings.audioProfile.filterChain
         )
     }
+
+    override fun writeDownload(id: String, output: OutputStream) {
+        val stream = resolveAudioStream(id)
+        FfmpegTranscoder.audioUrlToFragmentedMp4(
+            stream.content,
+            remux = shouldRemux(stream),
+            transcodeBitrate = audioSettings.transcodeBitrate,
+            audioFilter = audioSettings.audioProfile.filterChain,
+            output = output
+        )
+    }
+
+    private fun resolveAudioStream(id: String): AudioStream {
+        val extractor = ServiceList.SoundCloud.getStreamExtractor(id)
+        extractor.fetchPage()
+        return SoundCloudAudioSelector.select(extractor.audioStreams, audioSettings.qualityMode)
+            ?: throw IllegalStateException("No playable SoundCloud audio stream found for $id")
+    }
+
+    private fun shouldRemux(stream: AudioStream): Boolean =
+        audioSettings.preferRemux &&
+            !audioSettings.audioProfile.requiresTranscode &&
+            SoundCloudAudioSelector.canRemux(stream)
 
     private fun getNewAndHot(): List<Track> {
         val extractor = ServiceList.SoundCloud.kioskList
@@ -148,7 +160,7 @@ class SoundCloud : ISource {
     private fun extractItems(items: List<InfoItem>): List<Track> {
         return items.filterIsInstance<StreamInfoItem>().map { item ->
             Track(
-                trackIds.encode(item.url),
+                item.url,
                 listOf(Artist(1, item.uploaderName)),
                 item.name,
                 item.duration * 1_000

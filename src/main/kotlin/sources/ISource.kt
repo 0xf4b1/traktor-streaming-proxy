@@ -1,6 +1,7 @@
 package sources
 
 import beatport.api.Track
+import java.io.OutputStream
 
 interface ISource {
     /**
@@ -47,4 +48,12 @@ interface ISource {
      * Download music track data (must be in mp4 format)
      */
     fun download(id: String): ByteArray
+
+    /**
+     * Write music track data to the client. Sources may override this to start
+     * delivering data before the complete track has been downloaded.
+     */
+    fun writeDownload(id: String, output: OutputStream) {
+        output.write(download(id))
+    }
 }

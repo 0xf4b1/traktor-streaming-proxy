@@ -108,7 +108,10 @@ Huge thanks to [@v1nc](https://github.com/v1nc) for providing a working setup fo
 8. Create and start Docker image:
 ```
 docker build -t traktor-streaming-proxy .
-docker run -d --name traktor-streaming-proxy-container -p 443:8443 --restart always traktor-streaming-proxy
+mkdir -p state
+docker run -d --name traktor-streaming-proxy-container -p 443:8443 --restart always \
+  --mount type=bind,source="$(pwd)/state",target=/app/state \
+  traktor-streaming-proxy
 ```
 9. Make your system use the proxy by appending the following line to your `C:\Windows\System32\drivers\etc\hosts` file:
 ```
@@ -167,7 +170,92 @@ youtube.playlists=PLabc123,https://www.youtube.com/playlist?list=PLdef456
 ```
 
 The server loads each public playlist's title and all of its tracks through
-NewPipe. Private playlists are not available because the YouTube source does not
-authenticate with a YouTube account. Provider playlist IDs remain strings
-internally and are mapped to numeric IDs for the Beatport API, so YouTube IDs
-containing letters, hyphens, or underscores are supported.
+NewPipe. Provider playlist IDs remain strings internally and are mapped to
+numeric IDs for the Beatport API, so YouTube IDs containing letters, hyphens,
+or underscores are supported. Account playlists can additionally be enabled as
+described below.
+
+### SoundCloud
+
+Enable SoundCloud as a source and, if desired, include it in unqualified searches:
+
+```properties
+sources.enabled=youtube,soundcloud
+search.enabled=youtube,soundcloud
+```
+
+Public SoundCloud playlists can be added with a comma-separated list of full
+playlist URLs:
+
+```properties
+soundcloud.playlists=https://soundcloud.com/artist/sets/playlist-name
+```
+
+SoundCloud provides search results and the **New & hot** chart without an
+account. Audio is converted to an AAC-in-MP4 stream with ffmpeg because Traktor
+does not accept SoundCloud's MP3 or Opus streams directly. SoundCloud Go+ and
+geographically restricted tracks may be unavailable or limited to previews.
+
+For the best available SoundCloud quality, select an audio processing profile:
+
+```properties
+soundcloud.audioQuality=best
+soundcloud.preferRemux=false
+soundcloud.transcodeBitrate=256k
+soundcloud.audioProfile=clean
+```
+
+The profiles are:
+
+- `off`: no filters; permits direct AAC remux when `preferRemux=true`
+- `clean`: 48 kHz high-quality SoXR resampling and a 20 Hz high-pass (default)
+- `normalized`: `clean` plus EBU R128 loudness normalization to -14 LUFS
+- `softHighs`: `normalized` plus a gentle 2 dB high-frequency reduction
+
+Every profile except `off` requires AAC transcoding. SoundCloud audio is emitted
+as fragmented MP4 while ffmpeg is still processing it, preventing Traktor from
+waiting for the complete conversion and isolating concurrent downloads.
+
+### YouTube and SoundCloud accounts
+
+Account access is optional. YouTube adds account playlists and **Liked videos**;
+SoundCloud adds owned and liked playlists and a **Liked tracks** playlist.
+
+1. Create the provider OAuth applications. For SoundCloud, add
+   `http://127.0.0.1:8765/callback` as the redirect URI.
+2. Run the setup helper for the providers you want to connect:
+
+```bash
+python3 oauth_setup.py youtube
+python3 oauth_setup.py soundcloud
+```
+
+The helper writes credential files under `secrets/`. Treat them like passwords
+and never commit them. Configure their container paths:
+
+```properties
+youtube.oauth.file=/run/secrets/youtube-oauth.properties
+soundcloud.oauth.file=/run/secrets/soundcloud-oauth.properties
+server.trackRegistryFile=state/track-ids.properties
+```
+
+Create the runtime state directory and mount it together with the configuration
+and credential files:
+
+```bash
+mkdir -p state
+docker run -d \
+  --name traktor-streaming-proxy-container \
+  -p 443:8443 \
+  --restart always \
+  --mount type=bind,source="$(pwd)/src/main/dist/config.properties",target=/app/config.properties \
+  --mount type=bind,source="$(pwd)/state",target=/app/state \
+  --mount type=bind,source="$(pwd)/secrets/youtube-oauth.properties",target=/run/secrets/youtube-oauth.properties \
+  --mount type=bind,source="$(pwd)/secrets/soundcloud-oauth.properties",target=/run/secrets/soundcloud-oauth.properties \
+  traktor-streaming-proxy
+```
+
+The state file may contain private provider URLs. It is excluded from Git and
+the Docker build context. After upgrading from the old in-memory ID scheme,
+refresh each playlist once in Traktor. IDs then survive container restarts as
+long as the `state` mount is preserved.

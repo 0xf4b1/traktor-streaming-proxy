@@ -11,8 +11,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 internal class SoundCloudAccountClient(
-    credentials: OAuthCredentialStore,
-    private val trackIds: TrackIdRegistry
+    credentials: OAuthCredentialStore
 ) {
     private val api = AccountApi(credentials, "OAuth")
     private val userId by lazy(::resolveUserId)
@@ -110,7 +109,7 @@ internal class SoundCloudAccountClient(
         }
         val artist = item.obj("user")?.string("username").orEmpty()
         return Track(
-            trackIds.encode(authenticatedUrl),
+            authenticatedUrl,
             listOf(Artist(1, artist)),
             item.string("title") ?: url,
             item.long("duration") ?: 0

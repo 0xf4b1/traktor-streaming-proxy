@@ -33,3 +33,6 @@ cert/server.*
 secrets/
 __pycache__/
 *.pyc
+
+# Runtime ID mappings (may contain private provider URLs)
+state/
