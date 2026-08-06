@@ -1,6 +1,9 @@
 FROM ubuntu:jammy
 
-RUN apt update && apt upgrade -y
+RUN sed -i \
+    's|http://archive.ubuntu.com/ubuntu|http://mirror.dogado.de/ubuntu|g; s|http://security.ubuntu.com/ubuntu|http://mirror.dogado.de/ubuntu|g' \
+    /etc/apt/sources.list \
+    && apt update && apt upgrade -y
 RUN apt install -y openjdk-18-jre-headless
 
 COPY . /app
@@ -10,7 +13,10 @@ RUN ./gradlew distTar --no-daemon
 
 FROM ubuntu:jammy
 
-RUN apt update && apt upgrade -y
+RUN sed -i \
+    's|http://archive.ubuntu.com/ubuntu|http://mirror.dogado.de/ubuntu|g; s|http://security.ubuntu.com/ubuntu|http://mirror.dogado.de/ubuntu|g' \
+    /etc/apt/sources.list \
+    && apt update && apt upgrade -y
 RUN apt install -y openjdk-18-jre-headless ffmpeg
 
 WORKDIR /app

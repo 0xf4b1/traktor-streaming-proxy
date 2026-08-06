@@ -18,7 +18,6 @@ class Spotify : ISource {
         }
 
     private var session: Session? = null
-    private val playlistIds = mutableListOf<String>()
 
     override val name: String
         get() = "Spotify"
@@ -36,20 +35,20 @@ class Spotify : ISource {
         return mapTracks(res)
     }
 
-    override fun getCuratedPlaylists(reset: Boolean): List<Playlist> {
+    override fun getCuratedPlaylists(reset: Boolean): List<SourcePlaylist> {
         return mapPlaylists(api.getArtists(reset))
     }
 
     override fun getCuratedPlaylist(id: String): List<Track> {
-        return getAllTracks(playlistIds[id.toInt()], api::getArtist)
+        return getAllTracks(id, api::getArtist)
     }
 
-    override fun getPlaylists(): List<Playlist> {
+    override fun getPlaylists(): List<SourcePlaylist> {
         return mapPlaylists(api.getUsersPlaylists(true))
     }
 
     override fun getPlaylist(id: String): List<Track> {
-        return getAllTracks(playlistIds[id.toInt()], api::getPlaylist)
+        return getAllTracks(id, api::getPlaylist)
     }
 
     override fun getTop100(): List<Track> {
@@ -101,10 +100,9 @@ class Spotify : ISource {
         return tracks.filter { it.playable }.map { track -> Track(track.id.substring(track.id.lastIndexOf(':') + 1), listOf(Artist(1, track.artist)), track.title, track.duration) }
     }
 
-    private fun mapPlaylists(playlists: List<io.github.tiefensuche.spotify.api.Playlist>): List<Playlist> {
-        return playlists.map { artist ->
-            playlistIds.add(artist.id)
-            Playlist((playlistIds.size - 1).toLong(), artist.title)
+    private fun mapPlaylists(playlists: List<io.github.tiefensuche.spotify.api.Playlist>): List<SourcePlaylist> {
+        return playlists.map { playlist ->
+            SourcePlaylist(playlist.id, playlist.title)
         }
     }
 

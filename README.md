@@ -155,3 +155,19 @@ Top 100
 - <Genres>         --> source
  - <Tracks>        --> generated playlist of new released tracks
 ```
+
+### Public YouTube playlists
+
+Public YouTube playlists can be added to the merged **Playlists** category with
+the `youtube.playlists` setting. Use a comma-separated list of playlist IDs,
+full playlist URLs, or a mixture of both:
+
+```properties
+youtube.playlists=PLabc123,https://www.youtube.com/playlist?list=PLdef456
+```
+
+The server loads each public playlist's title and all of its tracks through
+NewPipe. Private playlists are not available because the YouTube source does not
+authenticate with a YouTube account. Provider playlist IDs remain strings
+internally and are mapped to numeric IDs for the Beatport API, so YouTube IDs
+containing letters, hyphens, or underscores are supported.

@@ -14,7 +14,9 @@ import io.ktor.server.plugins.calllogging.*
 import kotlinx.serialization.json.*
 import org.apache.log4j.BasicConfigurator
 import sources.ISource
+import sources.SoundCloud
 import sources.Spotify
+import sources.SourcePlaylist
 import sources.Tidal
 import sources.Youtube
 import java.io.File
@@ -28,9 +30,11 @@ import kotlin.math.min
 val sources: ArrayList<ISource> = ArrayList()
 val trackIdToSource: HashMap<String, Int> = HashMap()
 val traktorIdToTrackId: HashMap<Long, String> = HashMap()
+val playlistIdRegistry = PlaylistIdRegistry()
 
 val allSources = mapOf(
     "youtube" to Youtube::class.java,
+    "soundcloud" to SoundCloud::class.java,
     "spotify" to Spotify::class.java,
     "tidal" to Tidal::class.java
 )
@@ -70,6 +74,10 @@ fun processTracks(id: Int, tracks: List<Track>): List<TrackResponse> {
         }
         TrackResponse(traktorId, track.artists, track.name, track.length_ms)
     }
+}
+
+private fun List<SourcePlaylist>.toApiPlaylists(sourceIndex: Int): List<Playlist> = map { playlist ->
+    Playlist(playlistIdRegistry.encode(sourceIndex, playlist.id), playlist.name)
 }
 
 /**
@@ -213,32 +221,73 @@ fun main() {
             }
 
             get("/v4/curation/playlists/") {
-                call.parameters["genre_id"]?.let {
-                    val results = sources[it.toInt() - 1].getCuratedPlaylists(!call.parameters.contains("more")).map { playlist ->
-                        Playlist((it + playlist.id).toLong(), playlist.name)
-                    }
-                    call.respond(CuratedPlaylistsResponse(results, if (results.isNotEmpty()) "api.beatport.com/v4/curation/playlists/?genre_id=$it&more" else ""))
-                }
+                val genreId = call.parameters["genre_id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing genre_id")
+                val sourceIndex = genreId.toIntOrNull()?.minus(1)
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid genre_id")
+                val source = sources.getOrNull(sourceIndex)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown source")
+
+                val results = source
+                    .getCuratedPlaylists(!call.parameters.contains("more"))
+                    .toApiPlaylists(sourceIndex)
+                call.respond(
+                    CuratedPlaylistsResponse(
+                        results,
+                        if (results.isNotEmpty()) {
+                            "api.beatport.com/v4/curation/playlists/?genre_id=$genreId&more"
+                        } else {
+                            ""
+                        }
+                    )
+                )
             }
 
             get("/v4/curation/playlists/{id}/tracks/") {
-                call.parameters["id"]?.let {
-                    val sourceId = it.substring(0, 1).toInt() - 1
-                    val results = processTracks(sourceId, sources[sourceId].getCuratedPlaylist(it.substring(1)))
-                    call.respond(CuratedPlaylistResponse(results.map { track -> PlaylistItem(track) }, "" /* unused by Traktor */))
-                }
+                val externalId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid playlist ID")
+                val reference = playlistIdRegistry.decode(externalId)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown playlist")
+                val source = sources.getOrNull(reference.sourceIndex)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown source")
+
+                val results = processTracks(
+                    reference.sourceIndex,
+                    source.getCuratedPlaylist(reference.sourcePlaylistId)
+                )
+                call.respond(
+                    CuratedPlaylistResponse(
+                        results.map { track -> PlaylistItem(track) },
+                        "" /* unused by Traktor */
+                    )
+                )
             }
 
             get("/v4/my/playlists/") {
-                call.respond(CuratedPlaylistsResponse(sources.mapIndexed { id, source -> source.getPlaylists().map { playlist -> Playlist("${id + 1}${playlist.id}".toLong(), playlist.name) } }.flatten(), "" /* not needed */))
+                val results = sources.flatMapIndexed { sourceIndex, source ->
+                    source.getPlaylists().toApiPlaylists(sourceIndex)
+                }
+                call.respond(CuratedPlaylistsResponse(results, "" /* not needed */))
             }
 
             get("/v4/my/playlists/{id}/tracks/") {
-                call.parameters["id"]?.let {
-                    val sourceId = it.substring(0, 1).toInt() - 1
-                    val results = processTracks(sourceId, sources[sourceId].getPlaylist(it.substring(1)))
-                    call.respond(CuratedPlaylistResponse(results.map { track -> PlaylistItem(track) }, "" /* unused by Traktor */))
-                }
+                val externalId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid playlist ID")
+                val reference = playlistIdRegistry.decode(externalId)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown playlist")
+                val source = sources.getOrNull(reference.sourceIndex)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown source")
+
+                val results = processTracks(
+                    reference.sourceIndex,
+                    source.getPlaylist(reference.sourcePlaylistId)
+                )
+                call.respond(
+                    CuratedPlaylistResponse(
+                        results.map { track -> PlaylistItem(track) },
+                        "" /* unused by Traktor */
+                    )
+                )
             }
 
             get("/v4/catalog/genres/{id}/top/100/") {

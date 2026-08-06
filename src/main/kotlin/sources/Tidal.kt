@@ -2,7 +2,6 @@ package sources
 
 import Config.prop
 import beatport.api.Artist
-import beatport.api.Playlist
 import beatport.api.Track
 import com.tiefensuche.tidal.api.TidalApi
 import org.xml.sax.Attributes
@@ -11,6 +10,7 @@ import org.xml.sax.helpers.DefaultHandler
 import java.io.ByteArrayOutputStream
 import java.io.StringReader
 import java.net.URL
+import java.util.concurrent.ConcurrentHashMap
 import javax.xml.parsers.SAXParserFactory
 
 class Tidal : ISource {
@@ -28,8 +28,7 @@ class Tidal : ISource {
             auth()
     }
 
-    private var artists = ArrayList<com.tiefensuche.tidal.api.Artist>()
-    private val playlists = mutableListOf<Pair<String, PlaylistType>>()
+    private val playlistTypes = ConcurrentHashMap<String, PlaylistType>()
     private enum class PlaylistType {
         PLAYLIST,
         MIX
@@ -47,46 +46,48 @@ class Tidal : ISource {
         return res.map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
     }
 
-    override fun getCuratedPlaylists(reset: Boolean): List<Playlist> {
-        val current = api.getArtists(false)
-        artists.addAll(current)
-        return current.mapIndexed { id, artist -> Playlist((artists.size - current.size + id).toLong(), artist.name) }
+    override fun getCuratedPlaylists(reset: Boolean): List<SourcePlaylist> {
+        return api.getArtists(reset).map { artist ->
+            SourcePlaylist(artist.id.toString(), artist.name)
+        }
     }
 
-    override fun getPlaylists(): List<Playlist> {
+    override fun getPlaylists(): List<SourcePlaylist> {
         val res = api.getMixes().map {
-            playlists.add(Pair(it.uuid, PlaylistType.MIX))
-            Playlist((playlists.size - 1).toLong(), it.title)
+            playlistTypes[it.uuid] = PlaylistType.MIX
+            SourcePlaylist(it.uuid, it.title)
         }.toMutableList()
 
         res.addAll(api.getPlaylists(true).map {
-            playlists.add(Pair(it.uuid, PlaylistType.PLAYLIST))
-            Playlist((playlists.size - 1).toLong(), it.title)
+            playlistTypes[it.uuid] = PlaylistType.PLAYLIST
+            SourcePlaylist(it.uuid, it.title)
         })
 
         return res
     }
 
     override fun getPlaylist(id: String): List<Track> {
-        playlists[id.toInt()].let {
-            return when (it.second) {
+        playlistTypes[id]?.let { playlistType ->
+            return when (playlistType) {
                 PlaylistType.PLAYLIST -> {
-                    val res = api.getPlaylist(it.first, true).toMutableList()
+                    val res = api.getPlaylist(id, true).toMutableList()
                     do {
-                        val next = api.getPlaylist(it.first, false)
+                        val next = api.getPlaylist(id, false)
                         res.addAll(next)
                     } while (next.isNotEmpty())
                     res
                 }
-                PlaylistType.MIX -> api.getMix(it.first, true)
+                PlaylistType.MIX -> api.getMix(id, true)
             }.map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
         }
+        return emptyList()
     }
 
     override fun getCuratedPlaylist(id: String): List<Track> {
-        val res = api.getArtist(artists[id.toInt()].id, true).toMutableList()
+        val artistId = id.toLongOrNull() ?: return emptyList()
+        val res = api.getArtist(artistId, true).toMutableList()
         do {
-            val next = api.getArtist(artists[id.toInt()].id, false)
+            val next = api.getArtist(artistId, false)
             res.addAll(next)
         } while (next.isNotEmpty())
         return res.map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }

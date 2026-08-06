@@ -32,11 +32,18 @@ object WebRequests {
 
     @Throws(HttpException::class)
     fun request(con: HttpsURLConnection): Response {
-        if (con.responseCode < 400) {
-            return Response(con.responseCode, con.inputStream.bufferedReader().use(BufferedReader::readText))
-        } else {
-            throw HttpException(con.responseCode, con.errorStream.bufferedReader().use(BufferedReader::readText))
+        val response = requestAllowErrors(con)
+        if (response.status >= 400) {
+            throw HttpException(response.status, response.value)
         }
+        return response
+    }
+
+    fun requestAllowErrors(con: HttpsURLConnection): Response {
+        val status = con.responseCode
+        val stream = if (status < 400) con.inputStream else con.errorStream
+        val body = stream?.bufferedReader()?.use(BufferedReader::readText).orEmpty()
+        return Response(status, body)
     }
 
     class HttpException(val code: Int, message: String?) : IOException(message)
