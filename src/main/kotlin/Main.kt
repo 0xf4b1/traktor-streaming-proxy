@@ -12,8 +12,6 @@ import io.ktor.server.engine.sslConnector
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.calllogging.*
 import kotlinx.serialization.json.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.apache.log4j.BasicConfigurator
 import sources.ISource
 import sources.SoundCloud
@@ -110,11 +108,13 @@ fun main() {
     BasicConfigurator.configure()
 
     Config.readConfig()
+    val audioDownloadCache = AudioDownloadCache.from(prop)
     trackReferenceRegistry = TrackReferenceRegistry(
         Path.of(prop.getProperty("server.trackRegistryFile", "state/track-ids.properties"))
     )
     Runtime.getRuntime().addShutdownHook(object : Thread() {
         override fun run() {
+            audioDownloadCache.close()
             Config.saveConfig()
         }
     })
@@ -298,48 +298,7 @@ fun main() {
                 }
             }
 
-            get("/v4/catalog/tracks/{id}/download/") {
-                val externalId = call.parameters["id"]?.toLongOrNull()
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid track ID")
-                val reference = trackReferenceRegistry.decode(externalId)
-                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown track")
-                if (sources.none { it.name == reference.sourceName }) {
-                    return@get call.respond(HttpStatusCode.NotFound, "Unknown source")
-                }
-                call.respond(
-                    Download(
-                        "https://api.beatport.com/output/$externalId/audio.mp4",
-                        "foo",
-                        reference.lengthMs.toInt()
-                    )
-                )
-            }
-
-            head("/output/{id}/audio.mp4") {
-                val externalId = call.parameters["id"]?.toLongOrNull()
-                    ?: return@head call.respond(HttpStatusCode.BadRequest)
-                val reference = trackReferenceRegistry.decode(externalId)
-                    ?: return@head call.respond(HttpStatusCode.NotFound)
-                if (sources.none { it.name == reference.sourceName }) {
-                    return@head call.respond(HttpStatusCode.NotFound)
-                }
-                call.respondOutputStream(ContentType.parse("video/mp4")) {}
-            }
-
-            get("/output/{id}/audio.mp4") {
-                val externalId = call.parameters["id"]?.toLongOrNull()
-                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid track ID")
-                val reference = trackReferenceRegistry.decode(externalId)
-                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown track")
-                val source = sources.firstOrNull { it.name == reference.sourceName }
-                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown source")
-
-                call.respondOutputStream(ContentType.parse("video/mp4")) {
-                    withContext(Dispatchers.IO) {
-                        source.writeDownload(reference.sourceTrackId, this@respondOutputStream)
-                    }
-                }
-            }
+            audioDownloadRoutes(sources, trackReferenceRegistry, audioDownloadCache)
         }
     }).start(wait = true)
 }

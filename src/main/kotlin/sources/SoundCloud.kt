@@ -9,7 +9,6 @@ import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.services.soundcloud.linkHandler.SoundcloudSearchQueryHandlerFactory.TRACKS
 import org.schabi.newpipe.extractor.stream.AudioStream
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
-import java.io.OutputStream
 import java.util.concurrent.ConcurrentHashMap
 
 class SoundCloud : ISource {
@@ -127,16 +126,14 @@ class SoundCloud : ISource {
         )
     }
 
-    override fun writeDownload(id: String, output: OutputStream) {
-        val stream = resolveAudioStream(id)
-        FfmpegTranscoder.audioUrlToFragmentedMp4(
-            stream.content,
-            remux = shouldRemux(stream),
-            transcodeBitrate = audioSettings.transcodeBitrate,
-            audioFilter = audioSettings.audioProfile.filterChain,
-            output = output
-        )
-    }
+    override fun downloadCacheKey(id: String): String = listOf(
+        "compatible-mp4-v1",
+        id,
+        audioSettings.qualityMode.name,
+        audioSettings.preferRemux,
+        audioSettings.transcodeBitrate,
+        audioSettings.audioProfile.name
+    ).joinToString("|")
 
     private fun resolveAudioStream(id: String): AudioStream {
         val extractor = ServiceList.SoundCloud.getStreamExtractor(id)

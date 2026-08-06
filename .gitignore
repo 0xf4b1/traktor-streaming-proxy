@@ -28,6 +28,8 @@ cert/keystore.*
 cert/server.*
 
 .idea
+.gradle/
+build/
 
 # OAuth account credentials
 secrets/

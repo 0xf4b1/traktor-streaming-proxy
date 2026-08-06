@@ -1,7 +1,6 @@
 package sources
 
 import beatport.api.Track
-import java.io.OutputStream
 
 interface ISource {
     /**
@@ -50,10 +49,8 @@ interface ISource {
     fun download(id: String): ByteArray
 
     /**
-     * Write music track data to the client. Sources may override this to start
-     * delivering data before the complete track has been downloaded.
+     * Identifies the settings that affect a cached download. The returned value
+     * is hashed before it is used as a filename.
      */
-    fun writeDownload(id: String, output: OutputStream) {
-        output.write(download(id))
-    }
+    fun downloadCacheKey(id: String): String = id
 }

@@ -212,9 +212,25 @@ The profiles are:
 - `normalized`: `clean` plus EBU R128 loudness normalization to -14 LUFS
 - `softHighs`: `normalized` plus a gentle 2 dB high-frequency reduction
 
-Every profile except `off` requires AAC transcoding. SoundCloud audio is emitted
-as fragmented MP4 while ffmpeg is still processing it, preventing Traktor from
-waiting for the complete conversion and isolating concurrent downloads.
+Every profile except `off` requires AAC transcoding. Downloads are prepared as
+regular fast-start MP4 files because Traktor rejects fragmented MP4 delivered
+with chunked HTTP transfer. Preparation starts when Traktor requests the
+download URL. Concurrent requests for the same track share one conversion, and
+subsequent plays use the cached file with a fixed `Content-Length`.
+
+The cache defaults to 20 tracks and one ffmpeg worker. Both limits can be
+changed without rebuilding the image:
+
+```properties
+server.audioCacheDirectory=state/audio-cache
+server.audioCacheMaxFiles=20
+server.audioCacheWorkers=1
+```
+
+Keep the cache directory below the bind-mounted `state` directory if converted
+tracks should survive container recreation. The worker limit avoids several
+simultaneous conversions saturating Docker Desktop. The first play of an
+uncached track can take a few seconds; repeated plays should start immediately.
 
 ### YouTube and SoundCloud accounts
 
