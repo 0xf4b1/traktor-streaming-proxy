@@ -91,6 +91,8 @@ If you get an error or something different, it will not work with Traktor and yo
 DYLD_INSERT_LIBRARIES=./SecTrustEvaluateStub.dylib "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/MacOS/Traktor"
 ```
 
+If you built from source (`./gradlew installDist`) and have `cert/SecTrustEvaluateStub.dylib`, you can instead double-click `start-traktor-proxy.command` to start the proxy from the repo-root `config.properties`, launch Traktor with the stub library, and stop the proxy when Traktor quits. Use `stop-traktor-proxy.command` to stop the proxy manually. Override the Traktor binary path with `TRAKTOR_BIN` if needed.
+
 If you are not yet linked with the server, open settings and connect to Beatport streaming. You should receive an immediate redirect which connects Traktor.
 
 10. Done! If you navigate to Beatport Streaming, you should be able to browse through the predefined categories and use the search box to find content.
