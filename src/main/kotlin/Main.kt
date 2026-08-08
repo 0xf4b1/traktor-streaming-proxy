@@ -30,6 +30,7 @@ import kotlin.collections.ArrayList
 val sources: ArrayList<ISource> = ArrayList()
 val playlistIdRegistry = PlaylistIdRegistry()
 lateinit var trackReferenceRegistry: TrackReferenceRegistry
+internal lateinit var trackDurationFilter: TrackDurationFilter
 
 val allSources = mapOf(
     "youtube" to Youtube::class.java,
@@ -66,7 +67,7 @@ fun register(source: Class<out ISource>) {
 
 fun processTracks(id: Int, tracks: List<Track>): List<TrackResponse> {
     val sourceName = sources[id].name
-    val results = tracks.map { track ->
+    val results = trackDurationFilter.filter(tracks).map { track ->
         val traktorId = trackReferenceRegistry.encode(sourceName, track.id, track.length_ms)
         TrackResponse(traktorId, track.artists, track.name, track.length_ms)
     }
@@ -109,6 +110,7 @@ fun main() {
 
     Config.readConfig()
     val audioDownloadCache = AudioDownloadCache.from(prop)
+    trackDurationFilter = TrackDurationFilter.from(prop)
     trackReferenceRegistry = TrackReferenceRegistry(
         Path.of(prop.getProperty("server.trackRegistryFile", "state/track-ids.properties"))
     )
@@ -298,7 +300,12 @@ fun main() {
                 }
             }
 
-            audioDownloadRoutes(sources, trackReferenceRegistry, audioDownloadCache)
+            audioDownloadRoutes(
+                sources,
+                trackReferenceRegistry,
+                audioDownloadCache,
+                trackDurationFilter
+            )
         }
     }).start(wait = true)
 }

@@ -232,6 +232,16 @@ tracks should survive container recreation. The worker limit avoids several
 simultaneous conversions saturating Docker Desktop. The first play of an
 uncached track can take a few seconds; repeated plays should start immediately.
 
+Tracks longer than ten minutes are excluded from search results, playlists and
+charts before they can enter the processing queue. Set the limit in minutes, or
+use `0` to disable it:
+
+```properties
+server.maxTrackDurationMinutes=10
+```
+
+Tracks with an unknown duration remain visible.
+
 ### YouTube and SoundCloud accounts
 
 Account access is optional. YouTube adds account playlists and **Liked videos**;

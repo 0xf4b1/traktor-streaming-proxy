@@ -11,16 +11,20 @@ import sources.ISource
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 
-fun Route.audioDownloadRoutes(
+internal fun Route.audioDownloadRoutes(
     sources: List<ISource>,
     trackRegistry: TrackReferenceRegistry,
-    cache: AudioDownloadCache
+    cache: AudioDownloadCache,
+    durationFilter: TrackDurationFilter
 ) {
     get("/v4/catalog/tracks/{id}/download/") {
         val externalId = call.parameters["id"]?.toLongOrNull()
             ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid track ID")
         val reference = trackRegistry.decode(externalId)
             ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown track")
+        if (!durationFilter.allows(reference.lengthMs)) {
+            return@get call.respond(HttpStatusCode.NotFound, "Track exceeds duration limit")
+        }
         val source = sources.firstOrNull { it.name == reference.sourceName }
             ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown source")
 
@@ -39,7 +43,7 @@ fun Route.audioDownloadRoutes(
     head("/output/{id}/audio.mp4") {
         val externalId = call.parameters["id"]?.toLongOrNull()
             ?: return@head call.respond(HttpStatusCode.BadRequest)
-        val prepared = prepare(externalId, sources, trackRegistry, cache)
+        val prepared = prepare(externalId, sources, trackRegistry, cache, durationFilter)
             ?: return@head call.respond(HttpStatusCode.NotFound)
         call.respondFile(prepared.toFile())
     }
@@ -47,7 +51,7 @@ fun Route.audioDownloadRoutes(
     get("/output/{id}/audio.mp4") {
         val externalId = call.parameters["id"]?.toLongOrNull()
             ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid track ID")
-        val prepared = prepare(externalId, sources, trackRegistry, cache)
+        val prepared = prepare(externalId, sources, trackRegistry, cache, durationFilter)
             ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown track or source")
         call.respondFile(prepared.toFile())
     }
@@ -57,9 +61,11 @@ private suspend fun prepare(
     externalId: Long,
     sources: List<ISource>,
     trackRegistry: TrackReferenceRegistry,
-    cache: AudioDownloadCache
+    cache: AudioDownloadCache,
+    durationFilter: TrackDurationFilter
 ): Path? {
     val reference = trackRegistry.decode(externalId) ?: return null
+    if (!durationFilter.allows(reference.lengthMs)) return null
     val source = sources.firstOrNull { it.name == reference.sourceName } ?: return null
     return cache.prepare(source.cacheKey(reference.sourceTrackId)) {
         source.download(reference.sourceTrackId)
