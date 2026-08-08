@@ -14,23 +14,27 @@ import io.ktor.server.plugins.calllogging.*
 import kotlinx.serialization.json.*
 import org.apache.log4j.BasicConfigurator
 import sources.ISource
+import sources.SoundCloud
 import sources.Spotify
+import sources.SourcePlaylist
 import sources.Tidal
 import sources.Youtube
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.KeyStore
+import java.nio.file.Path
 import java.util.*
 import kotlin.collections.ArrayList
-import kotlin.math.min
 
 val sources: ArrayList<ISource> = ArrayList()
-val trackIdToSource: HashMap<String, Int> = HashMap()
-val traktorIdToTrackId: HashMap<Long, String> = HashMap()
+val playlistIdRegistry = PlaylistIdRegistry()
+lateinit var trackReferenceRegistry: TrackReferenceRegistry
+internal lateinit var trackDurationFilter: TrackDurationFilter
 
 val allSources = mapOf(
     "youtube" to Youtube::class.java,
+    "soundcloud" to SoundCloud::class.java,
     "spotify" to Spotify::class.java,
     "tidal" to Tidal::class.java
 )
@@ -62,14 +66,17 @@ fun register(source: Class<out ISource>) {
 }
 
 fun processTracks(id: Int, tracks: List<Track>): List<TrackResponse> {
-    return tracks.map { track ->
-        trackIdToSource[track.id] = id
-        val traktorId = Utils.encode(track.id.substring(0, min(track.id.length, 10)))
-        if (!traktorIdToTrackId.containsKey(traktorId)) {
-            traktorIdToTrackId[traktorId] = if (track.id.length > 10) track.id.substring(10) else ""
-        }
+    val sourceName = sources[id].name
+    val results = trackDurationFilter.filter(tracks).map { track ->
+        val traktorId = trackReferenceRegistry.encode(sourceName, track.id, track.length_ms)
         TrackResponse(traktorId, track.artists, track.name, track.length_ms)
     }
+    trackReferenceRegistry.flush()
+    return results
+}
+
+private fun List<SourcePlaylist>.toApiPlaylists(sourceIndex: Int): List<Playlist> = map { playlist ->
+    Playlist(playlistIdRegistry.encode(sourceIndex, playlist.id), playlist.name)
 }
 
 /**
@@ -102,8 +109,14 @@ fun main() {
     BasicConfigurator.configure()
 
     Config.readConfig()
+    val audioDownloadCache = AudioDownloadCache.from(prop)
+    trackDurationFilter = TrackDurationFilter.from(prop)
+    trackReferenceRegistry = TrackReferenceRegistry(
+        Path.of(prop.getProperty("server.trackRegistryFile", "state/track-ids.properties"))
+    )
     Runtime.getRuntime().addShutdownHook(object : Thread() {
         override fun run() {
+            audioDownloadCache.close()
             Config.saveConfig()
         }
     })
@@ -155,7 +168,6 @@ fun main() {
                 isLenient = true
             })
         }
-        var data = ByteArray(0)
         routing {
 
             get("/v4/auth/o/authorize/") {
@@ -213,32 +225,73 @@ fun main() {
             }
 
             get("/v4/curation/playlists/") {
-                call.parameters["genre_id"]?.let {
-                    val results = sources[it.toInt() - 1].getCuratedPlaylists(!call.parameters.contains("more")).map { playlist ->
-                        Playlist((it + playlist.id).toLong(), playlist.name)
-                    }
-                    call.respond(CuratedPlaylistsResponse(results, if (results.isNotEmpty()) "api.beatport.com/v4/curation/playlists/?genre_id=$it&more" else ""))
-                }
+                val genreId = call.parameters["genre_id"]
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Missing genre_id")
+                val sourceIndex = genreId.toIntOrNull()?.minus(1)
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid genre_id")
+                val source = sources.getOrNull(sourceIndex)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown source")
+
+                val results = source
+                    .getCuratedPlaylists(!call.parameters.contains("more"))
+                    .toApiPlaylists(sourceIndex)
+                call.respond(
+                    CuratedPlaylistsResponse(
+                        results,
+                        if (results.isNotEmpty()) {
+                            "api.beatport.com/v4/curation/playlists/?genre_id=$genreId&more"
+                        } else {
+                            ""
+                        }
+                    )
+                )
             }
 
             get("/v4/curation/playlists/{id}/tracks/") {
-                call.parameters["id"]?.let {
-                    val sourceId = it.substring(0, 1).toInt() - 1
-                    val results = processTracks(sourceId, sources[sourceId].getCuratedPlaylist(it.substring(1)))
-                    call.respond(CuratedPlaylistResponse(results.map { track -> PlaylistItem(track) }, "" /* unused by Traktor */))
-                }
+                val externalId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid playlist ID")
+                val reference = playlistIdRegistry.decode(externalId)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown playlist")
+                val source = sources.getOrNull(reference.sourceIndex)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown source")
+
+                val results = processTracks(
+                    reference.sourceIndex,
+                    source.getCuratedPlaylist(reference.sourcePlaylistId)
+                )
+                call.respond(
+                    CuratedPlaylistResponse(
+                        results.map { track -> PlaylistItem(track) },
+                        "" /* unused by Traktor */
+                    )
+                )
             }
 
             get("/v4/my/playlists/") {
-                call.respond(CuratedPlaylistsResponse(sources.mapIndexed { id, source -> source.getPlaylists().map { playlist -> Playlist("${id + 1}${playlist.id}".toLong(), playlist.name) } }.flatten(), "" /* not needed */))
+                val results = sources.flatMapIndexed { sourceIndex, source ->
+                    source.getPlaylists().toApiPlaylists(sourceIndex)
+                }
+                call.respond(CuratedPlaylistsResponse(results, "" /* not needed */))
             }
 
             get("/v4/my/playlists/{id}/tracks/") {
-                call.parameters["id"]?.let {
-                    val sourceId = it.substring(0, 1).toInt() - 1
-                    val results = processTracks(sourceId, sources[sourceId].getPlaylist(it.substring(1)))
-                    call.respond(CuratedPlaylistResponse(results.map { track -> PlaylistItem(track) }, "" /* unused by Traktor */))
-                }
+                val externalId = call.parameters["id"]?.toLongOrNull()
+                    ?: return@get call.respond(HttpStatusCode.BadRequest, "Invalid playlist ID")
+                val reference = playlistIdRegistry.decode(externalId)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown playlist")
+                val source = sources.getOrNull(reference.sourceIndex)
+                    ?: return@get call.respond(HttpStatusCode.NotFound, "Unknown source")
+
+                val results = processTracks(
+                    reference.sourceIndex,
+                    source.getPlaylist(reference.sourcePlaylistId)
+                )
+                call.respond(
+                    CuratedPlaylistResponse(
+                        results.map { track -> PlaylistItem(track) },
+                        "" /* unused by Traktor */
+                    )
+                )
             }
 
             get("/v4/catalog/genres/{id}/top/100/") {
@@ -247,24 +300,12 @@ fun main() {
                 }
             }
 
-            get("/v4/catalog/tracks/{id}/download/") {
-                call.parameters["id"]?.let {
-                    val trackId = Utils.decode(it.toLong()) + traktorIdToTrackId[it.toLong()]!!
-                    data = sources[trackIdToSource[trackId]!!].download(trackId)
-                    call.respond(Download("https://api.beatport.com/output.mp4", "foo", 1337))
-                }
-            }
-
-            // Serve the last downloaded track
-            head("/output.mp4") {
-                call.response.header("content-type", "video/mp4")
-                call.respondBytes(data)
-            }
-
-            get("/output.mp4") {
-                call.response.header("content-type", "video/mp4")
-                call.respondBytes(data)
-            }
+            audioDownloadRoutes(
+                sources,
+                trackReferenceRegistry,
+                audioDownloadCache,
+                trackDurationFilter
+            )
         }
     }).start(wait = true)
 }

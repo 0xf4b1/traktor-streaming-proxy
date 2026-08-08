@@ -28,3 +28,13 @@ cert/keystore.*
 cert/server.*
 
 .idea
+.gradle/
+build/
+
+# OAuth account credentials
+secrets/
+__pycache__/
+*.pyc
+
+# Runtime ID mappings (may contain private provider URLs)
+state/

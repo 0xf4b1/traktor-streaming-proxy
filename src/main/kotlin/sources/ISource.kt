@@ -1,6 +1,5 @@
 package sources
 
-import beatport.api.Playlist
 import beatport.api.Track
 
 interface ISource {
@@ -17,7 +16,7 @@ interface ISource {
     /**
      * Playlist names showing in Traktor when navigating to Curated Playlists-><source name>
      */
-    fun getCuratedPlaylists(reset: Boolean): List<Playlist>
+    fun getCuratedPlaylists(reset: Boolean): List<SourcePlaylist>
 
     /**
      * Contents showing in Traktor when navigating to Curated Playlists-><source name>-><playlist name>
@@ -27,7 +26,7 @@ interface ISource {
     /**
      * Playlist names showing in Traktor when navigating to Playlists
      */
-    fun getPlaylists(): List<Playlist>
+    fun getPlaylists(): List<SourcePlaylist>
 
     /**
      * Contents showing in Traktor when navigating to Playlists-><playlist name>
@@ -48,4 +47,10 @@ interface ISource {
      * Download music track data (must be in mp4 format)
      */
     fun download(id: String): ByteArray
+
+    /**
+     * Identifies the settings that affect a cached download. The returned value
+     * is hashed before it is used as a filename.
+     */
+    fun downloadCacheKey(id: String): String = id
 }
