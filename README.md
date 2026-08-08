@@ -1,5 +1,5 @@
 # traktor-streaming-proxy
-Allow Traktor DJ to stream music from YouTube, Spotify, and Tidal by faking Beatport's API
+Allow Traktor DJ to stream music from YouTube, Spotify, Soundcloud and Tidal by faking Beatport's API
 
 <img src="screenshot.png" align="right" width="250"></a>
 
