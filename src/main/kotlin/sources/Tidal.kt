@@ -4,6 +4,7 @@ import Config.prop
 import beatport.api.Artist
 import beatport.api.Playlist
 import beatport.api.Track
+import beatport.api.releaseWithArt
 import com.tiefensuche.tidal.api.TidalApi
 import org.xml.sax.Attributes
 import org.xml.sax.InputSource
@@ -44,7 +45,7 @@ class Tidal : ISource {
             val next = api.getTracks(false)
             res.addAll(next)
         } while (next.isNotEmpty())
-        return res.map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
+        return res.map { mapTrack(it) }
     }
 
     override fun getCuratedPlaylists(reset: Boolean): List<Playlist> {
@@ -79,7 +80,7 @@ class Tidal : ISource {
                     res
                 }
                 PlaylistType.MIX -> api.getMix(it.first, true)
-            }.map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
+            }.map { mapTrack(it) }
         }
     }
 
@@ -89,20 +90,29 @@ class Tidal : ISource {
             val next = api.getArtist(artists[id.toInt()].id, false)
             res.addAll(next)
         } while (next.isNotEmpty())
-        return res.map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
+        return res.map { mapTrack(it) }
     }
 
     override fun getTop100(): List<Track> {
         api.getMixes().forEach {
             if (it.title == "My New Arrivals")
-                return api.getMix(it.uuid, false).map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
+                return api.getMix(it.uuid, false).map { mapTrack(it) }
         }
         return emptyList()
     }
 
     override fun query(query: String, reset: Boolean): List<Track> {
-        return api.query(query, reset)
-            .map { Track(it.id.toString(), listOf(Artist(1, it.artist)), it.title, it.duration) }
+        return api.query(query, reset).map { mapTrack(it) }
+    }
+
+    private fun mapTrack(track: com.tiefensuche.tidal.api.Track): Track {
+        return Track(
+            track.id.toString(),
+            listOf(Artist(1, track.artist)),
+            track.title,
+            track.duration,
+            releaseWithArt(track.title, track.artwork)
+        )
     }
 
     override fun download(id: String): ByteArray {
