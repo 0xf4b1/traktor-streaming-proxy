@@ -20,14 +20,118 @@ import sources.Youtube
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.nio.charset.StandardCharsets
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.math.min
 
 val sources: ArrayList<ISource> = ArrayList()
-val trackIdToSource: HashMap<String, Int> = HashMap()
-val traktorIdToTrackId: HashMap<Long, String> = HashMap()
+
+private const val ENCODE_ALPHABET = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_"
+private const val TRACK_MAPPING_MAX = 8192
+
+/**
+ * Thread-safe Traktor id mappings with LRU eviction.
+ * Allocation check-and-claim is atomic; [trackIds]/[sources]/[tracks] stay in sync.
+ */
+internal class TrackMappings(
+    private val maxSize: Int = TRACK_MAPPING_MAX
+) {
+    private val lock = Any()
+    private val trackIds = LinkedHashMap<Long, String>(16, 0.75f, true)
+    private val sources = HashMap<Long, Int>()
+    private val tracks = HashMap<Long, TrackResponse>()
+
+    init {
+        require(maxSize > 0) { "maxSize must be positive" }
+    }
+
+    fun allocate(sourceId: Int, fullId: String): Long = synchronized(lock) {
+        allocateLocked(sourceId, fullId)
+    }
+
+    fun register(sourceId: Int, track: Track): TrackResponse = synchronized(lock) {
+        val traktorId = allocateLocked(sourceId, track.id)
+        TrackResponse(traktorId, track.artists, track.name, track.length_ms).also {
+            tracks[traktorId] = it
+        }
+    }
+
+    fun getTrack(traktorId: Long): TrackResponse? = synchronized(lock) {
+        // LinkedHashMap get refreshes LRU order; containsKey would not.
+        trackIds[traktorId] ?: return null
+        tracks[traktorId]
+    }
+
+    fun resolve(traktorId: Long): Pair<String, Int>? = synchronized(lock) {
+        val trackId = trackIds[traktorId] ?: return null
+        val sourceId = sources[traktorId] ?: return null
+        trackId to sourceId
+    }
+
+    fun getTrackId(traktorId: Long): String? = synchronized(lock) {
+        trackIds[traktorId]
+    }
+
+    fun getSource(traktorId: Long): Int? = synchronized(lock) {
+        sources[traktorId]
+    }
+
+    fun remove(traktorId: Long) = synchronized(lock) {
+        trackIds.remove(traktorId)
+        sources.remove(traktorId)
+        tracks.remove(traktorId)
+    }
+
+    fun size(): Int = synchronized(lock) {
+        trackIds.size
+    }
+
+    private fun allocateLocked(sourceId: Int, fullId: String): Long {
+        val preferredPrefix = fullId.substring(0, min(fullId.length, 10))
+        if (preferredPrefix.all { it in ENCODE_ALPHABET }) {
+            val preferred = Utils.encode(preferredPrefix)
+            val existingTrackId = trackIds[preferred]
+            val existingSourceId = sources[preferred]
+            if (existingTrackId == null || (existingTrackId == fullId && existingSourceId == sourceId)) {
+                claimLocked(preferred, sourceId, fullId)
+                return preferred
+            }
+        }
+
+        val sourceQualifiedId = "$sourceId:$fullId"
+        for (salt in 0 until 1024) {
+            val key = Utils.encode(hashToEncodableKey(sourceQualifiedId, salt))
+            val existingTrackId = trackIds[key]
+            val existingSourceId = sources[key]
+            if (existingTrackId == null || (existingTrackId == fullId && existingSourceId == sourceId)) {
+                claimLocked(key, sourceId, fullId)
+                return key
+            }
+        }
+        throw IllegalStateException("Could not allocate Traktor id for source $sourceId track $fullId")
+    }
+
+    private fun claimLocked(traktorId: Long, sourceId: Int, fullId: String) {
+        trackIds[traktorId] = fullId
+        sources[traktorId] = sourceId
+        trimToMaxSizeLocked()
+    }
+
+    private fun trimToMaxSizeLocked() {
+        val iterator = trackIds.entries.iterator()
+        while (trackIds.size > maxSize && iterator.hasNext()) {
+            val eldest = iterator.next()
+            iterator.remove()
+            sources.remove(eldest.key)
+            tracks.remove(eldest.key)
+        }
+    }
+}
+
+internal val trackMappings = TrackMappings()
 
 val allSources = mapOf(
     "youtube" to Youtube::class.java,
@@ -61,15 +165,34 @@ fun register(source: Class<out ISource>) {
     }
 }
 
-fun processTracks(id: Int, tracks: List<Track>): List<TrackResponse> {
-    return tracks.map { track ->
-        trackIdToSource[track.id] = id
-        val traktorId = Utils.encode(track.id.substring(0, min(track.id.length, 10)))
-        if (!traktorIdToTrackId.containsKey(traktorId)) {
-            traktorIdToTrackId[traktorId] = if (track.id.length > 10) track.id.substring(10) else ""
-        }
-        TrackResponse(traktorId, track.artists, track.name, track.length_ms)
+/**
+ * Builds a 10-char key in the [Utils.encode] alphabet from [fullId].
+ * [salt] is mixed in so callers can probe on rare hash collisions.
+ */
+internal fun hashToEncodableKey(fullId: String, salt: Int = 0): String {
+    val md = MessageDigest.getInstance("SHA-256")
+    md.update(fullId.toByteArray(StandardCharsets.UTF_8))
+    if (salt != 0) {
+        md.update(salt.toString().toByteArray(StandardCharsets.UTF_8))
     }
+    val digest = md.digest()
+    return buildString(10) {
+        for (i in 0 until 10) {
+            append(ENCODE_ALPHABET[digest[i].toInt() and 63])
+        }
+    }
+}
+
+/**
+ * Allocates a unique Traktor id for [fullId] from [sourceId], storing both parts of the
+ * source-qualified identity. Different sources may legitimately expose the same raw track id.
+ * Prefers encoding the first 10 characters when free; on prefix collision uses a hash-based key.
+ */
+internal fun allocateTraktorId(sourceId: Int, fullId: String): Long =
+    trackMappings.allocate(sourceId, fullId)
+
+fun processTracks(id: Int, tracks: List<Track>): List<TrackResponse> {
+    return tracks.map { track -> trackMappings.register(id, track) }
 }
 
 /**
@@ -247,12 +370,31 @@ fun main() {
                 }
             }
 
-            get("/v4/catalog/tracks/{id}/download/") {
-                call.parameters["id"]?.let {
-                    val trackId = Utils.decode(it.toLong()) + traktorIdToTrackId[it.toLong()]!!
-                    data = sources[trackIdToSource[trackId]!!].download(trackId)
-                    call.respond(Download("https://api.beatport.com/output.mp4", "foo", 1337))
+            get("/v4/catalog/tracks/") {
+                // Avoid 404 when Traktor probes this URL; Search uses /search/v1/tracks with q.
+                call.respond(GenreTrackResponse(emptyList(), ""))
+            }
+
+            get("/v4/catalog/tracks/{id}/") {
+                call.parameters["id"]?.let { id ->
+                    val track = id.toLongOrNull()?.let { trackMappings.getTrack(it) }
+                    if (track != null) {
+                        call.respond(track)
+                    } else {
+                        call.respond(HttpStatusCode.NotFound)
+                    }
                 }
+            }
+
+            get("/v4/catalog/tracks/{id}/download/") {
+                val rawId = call.parameters["id"] ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val traktorId = rawId.toLongOrNull()
+                    ?: return@get call.respond(HttpStatusCode.BadRequest)
+                val resolved = trackMappings.resolve(traktorId)
+                    ?: return@get call.respond(HttpStatusCode.NotFound)
+                val (trackId, sourceId) = resolved
+                data = sources[sourceId].download(trackId)
+                call.respond(Download("https://api.beatport.com/output.mp4", "foo", 1337))
             }
 
             // Serve the last downloaded track
