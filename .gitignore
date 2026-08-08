@@ -28,3 +28,9 @@ cert/keystore.*
 cert/server.*
 
 .idea
+/.gradle/
+/build/
+cert/*.dylib
+
+# local secrets (use src/main/dist/config.properties as template)
+/config.properties
