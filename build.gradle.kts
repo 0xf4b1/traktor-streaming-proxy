@@ -31,6 +31,8 @@ dependencies {
     implementation("com.github.0xf4b1:tidal-kt:v0.3.1")
 
     testImplementation(kotlin("test"))
+    testImplementation("io.ktor:ktor-server-test-host-jvm:$ktor_version")
+    testImplementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
     implementation(kotlin("stdlib-jdk8"))
 }
 

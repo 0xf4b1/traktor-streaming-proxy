@@ -28,3 +28,5 @@ cert/keystore.*
 cert/server.*
 
 .idea
+# runtime cache: YouTube 10-char Traktor id prefix -> 11-char video id
+youtube-id-prefix-cache.properties

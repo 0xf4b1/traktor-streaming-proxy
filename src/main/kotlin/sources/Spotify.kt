@@ -98,7 +98,15 @@ class Spotify : ISource {
     }
 
     private fun mapTracks(tracks: List<io.github.tiefensuche.spotify.api.Track>): List<Track> {
-        return tracks.filter { it.playable }.map { track -> Track(track.id.substring(track.id.lastIndexOf(':') + 1), listOf(Artist(1, track.artist)), track.title, track.duration) }
+        return tracks.filter { it.playable }.map { track ->
+            Track(
+                track.id.substring(track.id.lastIndexOf(':') + 1),
+                listOf(Artist(1, track.artist)),
+                track.title,
+                track.duration,
+                beatport.api.releaseWithArt(track.album.ifBlank { track.title }, track.artwork)
+            )
+        }
     }
 
     private fun mapPlaylists(playlists: List<io.github.tiefensuche.spotify.api.Playlist>): List<Playlist> {
