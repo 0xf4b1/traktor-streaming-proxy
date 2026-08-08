@@ -53,11 +53,14 @@ object Config {
     }
 }
 
-fun register(source: Class<out ISource>) {
-    try {
+fun register(source: Class<out ISource>): Boolean {
+    return try {
         sources.add(source.getConstructor().newInstance())
+        true
     } catch (ex: Exception) {
-        println("Can not instantiate $source: ${ex.printStackTrace()}")
+        println("Can not instantiate $source: ${ex.message}")
+        ex.printStackTrace()
+        false
     }
 }
 
@@ -86,7 +89,7 @@ private fun executeSearch(q: String, hasMoreParameter: Boolean): List<TrackRespo
         query = actualQuery
         listOf(allSources[sourceName])
     } else {
-        prop.getProperty("search.enabled", "").split(",").map { name -> allSources[name] }
+        parseSearchEnabledSources(prop.getProperty("search.enabled", ""))
     }
 
     return sources.mapIndexed { id, source ->
@@ -96,6 +99,18 @@ private fun executeSearch(q: String, hasMoreParameter: Boolean): List<TrackRespo
             emptyList()
         }
     }.flatten()
+}
+
+/**
+ * Parses `search.enabled`. Blank / empty list means all sources (null sentinel),
+ * matching the historical `"".split(",")` → `[null]` behavior.
+ */
+internal fun parseSearchEnabledSources(raw: String): List<Class<out ISource>?> {
+    val names = raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    if (names.isEmpty()) {
+        return listOf(null)
+    }
+    return names.map { name -> allSources[name] }
 }
 
 fun main() {
@@ -108,10 +123,22 @@ fun main() {
         }
     })
 
-    prop.getProperty("sources.enabled", "").split(",").map { name -> allSources[name] }.forEach {
-        if (it != null)
-            register(it)
+    val enabled = prop.getProperty("sources.enabled", "").split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    println("Enabled sources: ${enabled.joinToString(", ").ifEmpty { "(none)" }}")
+    enabled.forEach { name ->
+        val clazz = allSources[name]
+        if (clazz != null) {
+            println("Initializing ${clazz.simpleName}...")
+            if (register(clazz)) {
+                println("Initialized ${clazz.simpleName}")
+            } else {
+                println("Failed to initialize ${clazz.simpleName}")
+            }
+        } else {
+            println("Unknown source '$name' in sources.enabled (skipped)")
+        }
     }
+    println("Registered ${sources.size} source(s): ${sources.joinToString { it.name }}")
 
     val alias = "foo"
     var serverConfiguration: NettyApplicationEngine.Configuration.() -> Unit
@@ -147,6 +174,7 @@ fun main() {
         }
     }
 
+    println("Starting HTTPS server on port 8443...")
     embeddedServer(Netty, applicationEnvironment(), serverConfiguration, module = {
         install(CallLogging)
         install(ContentNegotiation) {
@@ -266,7 +294,9 @@ fun main() {
                 call.respondBytes(data)
             }
         }
-    }).start(wait = true)
+    }).start(wait = false)
+    println("Listening on https://api.beatport.com:8443. Ctrl+C to stop.")
+    Thread.currentThread().join()
 }
 
 private fun List<TrackResponse>.toNewSearchApi(): List<BeatportTrack> {
