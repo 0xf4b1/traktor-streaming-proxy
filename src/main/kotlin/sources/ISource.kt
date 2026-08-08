@@ -45,6 +45,12 @@ interface ISource {
     fun query(query: String, reset: Boolean): List<Track>
 
     /**
+     * Resolve a single track by source-native id (for lazy catalog/cover hydration).
+     * Default: unsupported.
+     */
+    fun lookupTrack(id: String): Track? = null
+
+    /**
      * Download music track data (must be in mp4 format)
      */
     fun download(id: String): ByteArray
