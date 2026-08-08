@@ -10,25 +10,31 @@ repositories {
 }
 
 dependencies {
-    val ktor_version = "3.1.3"
-    implementation("io.ktor:ktor-server-core-jvm:$ktor_version")
-    implementation("io.ktor:ktor-server-netty-jvm:$ktor_version")
-    implementation("io.ktor:ktor-server-status-pages-jvm:$ktor_version")
-    implementation("io.ktor:ktor-server-default-headers-jvm:$ktor_version")
-    implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktor_version")
-    implementation("io.ktor:ktor-serialization-kotlinx-xml:$ktor_version")
-    implementation("io.ktor:ktor-serialization-kotlinx-cbor:$ktor_version")
-    implementation("io.ktor:ktor-serialization-kotlinx-protobuf:$ktor_version")
-    implementation("io.ktor:ktor-client-content-negotiation:$ktor_version")
-    implementation("io.ktor:ktor-server-call-logging:$ktor_version")
-    implementation("io.ktor:ktor-network-tls-certificates:$ktor_version")
+    val ktorVersion = "3.1.3"
+    implementation(enforcedPlatform("io.netty:netty-bom:4.1.137.Final"))
+    implementation("io.ktor:ktor-server-core-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-netty-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-status-pages-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-default-headers-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-xml:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-cbor:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-protobuf:$ktorVersion")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-server-call-logging:$ktorVersion")
+    implementation("io.ktor:ktor-network-tls-certificates:$ktorVersion")
     implementation("org.slf4j:slf4j-log4j12:2.0.6")
 
-    implementation("com.github.teamnewpipe.NewPipeExtractor:extractor:v0.24.8")
+    implementation("com.github.teamnewpipe:NewPipeExtractor:v0.26.4")
     implementation("com.github.librespot-org.librespot-java:librespot-lib:52a8c24215")
     implementation("com.github.0xf4b1:spotify-kt:275f290e64")
     implementation("com.github.0xf4b1:tidal-kt:v0.3.1")
+
+    // Patched transitive protobuf version (IDE Mend warning).
+    constraints {
+        implementation("com.google.protobuf:protobuf-java:3.25.9")
+    }
 
     testImplementation(kotlin("test"))
     implementation(kotlin("stdlib-jdk8"))

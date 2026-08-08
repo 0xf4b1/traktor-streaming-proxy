@@ -6,8 +6,9 @@ import org.schabi.newpipe.extractor.downloader.Request
 import org.schabi.newpipe.extractor.downloader.Response
 import org.schabi.newpipe.extractor.localization.Localization
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory.MUSIC_SONGS
+import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
-import java.net.URL
+import java.net.URI
 import java.util.*
 
 class Youtube : ISource {
@@ -64,7 +65,7 @@ class Youtube : ISource {
     }
 
     private fun downloadTrack(path: String): ByteArray {
-        val con = URL(path).openConnection()
+        val con = URI.create(path).toURL().openConnection()
         con.setRequestProperty("range", "bytes=0-")
         return con.inputStream.readBytes()
     }
@@ -88,16 +89,23 @@ class Youtube : ISource {
     private fun getAudioStream(url: String): String {
         val extractor = ServiceList.YouTube.getStreamExtractor("https://www.youtube.com/watch?v=$url")
         extractor.fetchPage()
-        return extractor.audioStreams.filter { it.format!!.name == "m4a" }.maxBy { it.averageBitrate }.content
+        val m4a = extractor.audioStreams.filter { it.format?.name == "m4a" && it.isUrl }
+        // Prefer progressive HTTP when available; fall back to highest-bitrate m4a URL.
+        val stream = m4a
+            .filter { it.deliveryMethod == DeliveryMethod.PROGRESSIVE_HTTP }
+            .maxByOrNull { it.averageBitrate }
+            ?: m4a.maxByOrNull { it.averageBitrate }
+            ?: throw IllegalStateException("No m4a audio stream for YouTube id=$url")
+        return stream.content
     }
 
     class Downloader : org.schabi.newpipe.extractor.downloader.Downloader() {
 
-        private val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101 Firefox/68.0"
+        private val userAgent = "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:68.0) Gecko/20100101 Firefox/68.0"
 
         override fun execute(request: Request): Response {
             val headers = HashMap<String, String>()
-            headers["User-Agent"] = USER_AGENT
+            headers["User-Agent"] = userAgent
             request.headers().forEach { (k, v) -> headers[k] = v[0]}
 
             val con = WebRequests.createConnection(request.url(), request.httpMethod(), headers)
