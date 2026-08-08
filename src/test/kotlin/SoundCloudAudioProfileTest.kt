@@ -38,4 +38,14 @@ class SoundCloudAudioProfileTest {
         assertTrue(requireNotNull(SoundCloudAudioProfile.NORMALIZED.filterChain).endsWith(expected))
         assertTrue(requireNotNull(SoundCloudAudioProfile.SOFT_HIGHS.filterChain).endsWith(expected))
     }
+
+    @Test
+    fun softHighsReducesHighsWithoutNormalizingVolume() {
+        val softHighs = requireNotNull(SoundCloudAudioProfile.SOFT_HIGHS.filterChain)
+        val normalized = requireNotNull(SoundCloudAudioProfile.NORMALIZED.filterChain)
+
+        assertTrue("highshelf=" in softHighs)
+        assertFalse("loudnorm=" in softHighs)
+        assertTrue("loudnorm=" in normalized)
+    }
 }

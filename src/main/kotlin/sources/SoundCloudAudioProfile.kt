@@ -16,7 +16,6 @@ internal enum class SoundCloudAudioProfile(
     SOFT_HIGHS(
         "highpass=f=20," +
             "highshelf=f=12000:g=-2," +
-            "loudnorm=I=-14:LRA=11:TP=-1.5," +
             "aresample=48000:resampler=soxr:precision=28:out_channel_layout=stereo"
     );
 

@@ -210,7 +210,7 @@ The profiles are:
 - `off`: no filters; permits direct AAC remux when `preferRemux=true`
 - `clean`: stereo, 48 kHz high-quality SoXR resampling and a 20 Hz high-pass (default)
 - `normalized`: `clean` plus EBU R128 loudness normalization to -14 LUFS
-- `softHighs`: `normalized` plus a gentle 2 dB high-frequency reduction
+- `softHighs`: `clean` plus a gentle 2 dB high-frequency reduction; no normalization
 
 Every profile except `off` requires AAC transcoding. Downloads are prepared as
 regular fast-start MP4 files because Traktor rejects fragmented MP4 delivered
